@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.0</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.1</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -85,14 +85,59 @@
           <h2>Externe RGB-Ansteuerung</h2><p>Für den Test ist das GPU-ARGB-Kabel bei ausgeschaltetem, stromlosem PC korrekt an einem <strong>5V-JARGB_V2</strong>-Header anzuschließen. In TriXX <strong>External Source</strong>, in MSI Mystic Light den physisch benutzten Header wählen. Niemals mit <strong>12V JRGB</strong> verbinden.</p>
         </section>
         <section class="page" id="linux" aria-labelledby="linuxTitle">
-          <div class="eyebrow">SCHRITT 05 · UNABHÄNGIGER GEGENCHECK</div><h1 id="linuxTitle">Linux <span>Live-Test</span></h1><p class="lead">Ubuntu lässt sich vom USB-3.0-Stick ausprobieren. So prüfen wir GPU-Erkennung und Linux-Treiber unabhängig von der vorhandenen Windows-Installation.</p>
-          <div class="notice">Wichtig: Linux kann ein Windows-Problem <strong>stützen</strong>, aber ein fehlender Controller unter Linux beweist keinen Defekt. RGB-Unterstützung und I²C-Zugriff sind je nach Kernel und Software unterschiedlich.</div>
-          <div class="panel"><div class="panel-kicker">VORBEREITUNG</div><h3>Live-USB erstellen</h3><ol class="instructions"><li><a href="https://ubuntu.com/download/desktop" rel="noopener noreferrer" target="_blank">Ubuntu Desktop (offizielle ISO)</a> herunterladen.</li><li><a href="https://rufus.ie/de/" rel="noopener noreferrer" target="_blank">Rufus (offiziell)</a> öffnen und den USB-Stick als Ziel auswählen. <strong>Der Stick wird gelöscht.</strong></li><li>ISO schreiben und am MSI-PC über <strong>F11</strong> den USB-Stick booten.</li><li><strong>Ubuntu ausprobieren</strong> auswählen, nicht installieren. Secure Boot nur nach Prüfung einer möglichen Windows-Geräteverschlüsselung ändern.</li></ol></div>
-          <h2>Hardware unter Linux nur auslesen</h2><p>Terminal öffnen (Strg + Alt + T), folgenden Block einfügen. Er prüft Kernel, PCI-Geräte und vorhandene I²C-Gerätedateien ohne Registerscan und ohne Änderungen.</p>
-          <div class="code-panel"><div class="code-head"><strong>Linux Read-only Scan</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="linux" type="button">Befehl kopieren</button></div></div><pre id="linuxCode"></pre></div>
-          <p>Alternativ ist der lesende Quelltext unter <a href="./tools/linux-readonly.sh" download>tools/linux-readonly.sh</a> verfügbar. Optional: <a href="https://openrgb.org/releases.html" target="_blank" rel="noopener noreferrer">OpenRGB Linux</a> – nur die unterstützte Geräteerkennung testen, keine experimentellen I²C-Busscans oder Writes.</p>
-          <label class="field-label" for="linuxOutput">Linux-Terminalausgabe</label><textarea id="linuxOutput" rows="8" placeholder="GPU-DIAG-LINUX-BEGIN&#10;...&#10;GPU-DIAG-LINUX-END"></textarea>
-          <div class="button-row"><button class="btn primary" id="parseLinux" type="button">Erkennung auswerten</button><button class="btn ghost" id="clearLinux" type="button">Löschen</button></div><div class="result-box" id="linuxResult" aria-live="polite">Noch kein Linux-Scan durchgeführt.</div>
+          <div class="eyebrow">LINUX DIAGNOSESTATION · READ ONLY FIRST</div>
+          <h1 id="linuxTitle">Ubuntu <span>Live Lab</span></h1>
+          <p class="lead">Unabhängiger Gegencheck deiner Sapphire NITRO+ RX 7900 XTX – direkt vom Ubuntu-USB-Stick. Geführte Prüfungen, ein Klick zum Kopieren und nachvollziehbare Auswertung, ohne Windows zu installieren oder zu verändern.</p>
+          <div class="linux-stagebar" aria-label="Diagnoseablauf"><span class="stage">01 · Boot</span><span class="stage">02 · GPU</span><span class="stage">03 · I²C</span><span class="stage">04 · RGB</span><span class="stage">05 · Bericht</span></div>
+          <div class="notice"><strong>Wichtig:</strong> Die Webseite kann keine Hardware auslesen. Die angezeigten Terminal-Befehle sind explizit nur lesend; du kopierst sie in das lokale Ubuntu-Terminal und fügst die Ausgabe hier ein. Keine Fernsteuerung, kein Installationsskript, keine Änderung an der Kunden-SSD.</div>
+          <div class="linux-feature"><div class="micro">WAS WIR KLÄREN WOLLEN</div><h2>Liegt der Fehler an Windows – oder bleibt er unabhängig davon bestehen?</h2><p>Wenn die GPU-Beleuchtung <strong>ohne externes ARGB-Kabel unter Linux wirklich steuerbar ist</strong>, ist das ein starker Hinweis auf ein Windows-/Treiberproblem. Bleibt sie aus, ist ein Hardwaredefekt <strong>noch nicht bewiesen</strong>: Linux/OpenRGB unterstützt nicht jeden GPU-RGB-Controller zuverlässig.</p></div>
+
+          <div class="section-heading"><div><h2>01 / Ubuntu starten</h2><p>Du kannst den Stick sofort nutzen. Die Installation auf der SSD ist nicht erforderlich.</p></div><span class="tag safe">LIVE-USB</span></div>
+          <div class="wizard-list">
+            <div class="wizard-step"><span class="wizard-num">1</span><div><strong>USB-Stick einstecken, PC starten, F11 drücken</strong><p>Im MSI-Bootmenü den Eintrag <b>UEFI: USB-Stick</b> wählen. Die interne Windows-SSD nicht auswählen.</p></div></div>
+            <div class="wizard-step"><span class="wizard-num">2</span><div><strong>„Ubuntu ausprobieren“ / „Try Ubuntu“</strong><p>Auf keinen Fall „Installieren“ und keine Windows-Partition auswählen. Ubuntu läuft als Live-Sitzung im RAM/USB-Kontext.</p></div></div>
+            <div class="wizard-step"><span class="wizard-num">3</span><div><strong>Netzwerk verbinden und diese Seite im Ubuntu-Browser öffnen</strong><p>Öffne <code>https://dennodhn.github.io/Diagnose/#linux</code>. Terminal mit <b>Strg + Alt + T</b> öffnen. Einfügen normalerweise mit <b>Strg + Umschalt + V</b>.</p></div></div>
+          </div>
+          <div class="button-row">
+            <a class="btn secondary" href="https://ubuntu.com/desktop/docs/en/26.04/tutorial/try-ubuntu-desktop/" target="_blank" rel="noopener noreferrer">Offizielle Live-USB-Anleitung ↗</a>
+            <a class="btn ghost" href="https://rufus.ie/de/" target="_blank" rel="noopener noreferrer">Rufus ↗</a>
+          </div>
+          <div class="notice warn"><strong>Falls Secure Boot Probleme macht:</strong> Nicht automatisch UEFI- oder TPM-Einstellungen ändern. Ubuntu 26.04 kann normalerweise mit Secure Boot starten; vor jeder Änderung am Kunden-PC erst BitLocker-/Geräteverschlüsselung und Wiederherstellungsschlüssel prüfen.</div>
+
+          <div class="section-heading"><div><h2>02 / Basisprüfung</h2><p>GPU, Kernel, BIOS-PCI-Geräte, Treiber und sichtbare I²C-Busse ohne sudo erfassen.</p></div><span class="tag safe">NICHT SCHREIBEND</span></div>
+          <div class="code-panel"><div class="code-head"><strong>Terminalblock 1 · Hardware</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="linux" type="button">Alles kopieren</button></div></div><pre id="linuxCode" tabindex="0"></pre></div>
+          <p class="support-text">Der Block muss vollständig zwischen <code>GPU-DIAG-LINUX-BEGIN</code> und <code>GPU-DIAG-LINUX-END</code> ausgegeben werden. Du kannst den Text mit der Maus im Terminal markieren und mit <b>Strg + Umschalt + C</b> kopieren. Alternativ liegt die gleiche Diagnose als <a href="./tools/linux-readonly.sh" download>prüfbarer Shell-Quelltext</a> vor.</p>
+
+          <div class="section-heading"><div><h2>03 / I²C-Verbindung eingrenzen</h2><p>Nur Geräte- und Busnamen – kein Registerzugriff und kein I²C-Adressscan.</p></div><span class="tag safe">NICHT SCHREIBEND</span></div>
+          <div class="code-panel"><div class="code-head"><strong>Terminalblock 2 · GPU-Busse</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="linuxDeep" type="button">Alles kopieren</button></div></div><pre id="linuxDeepCode" tabindex="0"></pre></div>
+          <p class="support-text">Dieser zweite Block zeigt, ob der Kernel GPU-bezogene I²C-Adapter veröffentlicht und wem sie zugeordnet sind. <strong>Ein vorhandener I²C-Bus bestätigt nicht, dass der Sapphire-LED-Controller antwortet.</strong></p>
+          <div class="notice warn"><strong>Nicht ausführen:</strong> <code>i2cdetect -y</code>, <code>i2cdump</code>, <code>i2cset</code>, unkontrollierte SMBus-Scans, experimentelle Kernelmodule oder unbekannte RGB-Reparaturbefehle. Bus-Scans können Nebenwirkungen auf andere Geräte haben.</div>
+
+          <div class="section-heading"><div><h2>04 / Ausgabe lokal auswerten</h2><p>Ausgaben zusammen einfügen oder eine vorhandene TXT-/LOG-Datei lokal öffnen.</p></div></div>
+          <label class="field-label" for="linuxOutput">Terminalausgabe der beiden Blöcke</label>
+          <textarea id="linuxOutput" rows="13" placeholder="GPU-DIAG-LINUX-BEGIN&#10;KERNEL: ...&#10;...&#10;GPU-DIAG-LINUX-END&#10;&#10;GPU-DIAG-I2C-BEGIN&#10;...&#10;GPU-DIAG-I2C-END"></textarea>
+          <div class="button-row"><button class="btn secondary" id="importLinuxLabel" type="button">TXT/LOG lokal öffnen</button><input type="file" id="linuxFile" accept=".txt,.log,text/plain" class="visually-hidden" aria-label="Lokale Linux-Diagnosedatei wählen"><button class="btn primary" id="parseLinux" type="button">Diagnose analysieren</button><button class="btn ghost" id="clearLinux" type="button">Eingabe löschen</button></div>
+          <div class="result-box" id="linuxResult" aria-live="polite">Noch keine Linux-Daten eingelesen.</div>
+          <div class="linux-facts" id="linuxFacts" hidden aria-live="polite">
+            <div class="linux-fact"><small>RX 7900 XTX</small><strong id="linuxFactGpu">–</strong></div>
+            <div class="linux-fact"><small>AMD amdgpu</small><strong id="linuxFactDriver">–</strong></div>
+            <div class="linux-fact"><small>I²C-Busse sichtbar</small><strong id="linuxFactI2c">–</strong></div>
+            <div class="linux-fact"><small>Live-Ausgabe</small><strong id="linuxFactComplete">–</strong></div>
+          </div>
+
+          <div class="section-heading"><div><h2>05 / Beobachtung und RGB-Test</h2><p>Ergebnisse ausdrücklich getrennt von der reinen GPU-Erkennung erfassen.</p></div></div>
+          <div class="notice"><strong>Beachte die Kabelkonfiguration:</strong> Wenn die GPU noch mit MSI JARGB_V2 verbunden ist, kann eine mögliche Beleuchtung vom Mainboard kommen. Für einen <em>internen</em> Sapphire-Controller-Test muss das externe ARGB-Kabel bei <strong>ausgeschaltetem, stromlosem PC</strong> abgetrennt und der lose Stecker isoliert sein. Im laufenden Betrieb nichts umstecken.</div>
+          <div class="report-grid">
+            <div><label class="field-label" for="linuxCable">Anschluss der GPU während des Tests</label><select id="linuxCable"><option value="unknown">Noch nicht geprüft</option><option value="internal">Externes ARGB-Kabel abgezogen (isoliert)</option><option value="external">Externes ARGB-Kabel am Mainboard</option></select></div>
+            <div><label class="field-label" for="linuxBootLed">LED beim Ubuntu-Start</label><select id="linuxBootLed"><option value="unknown">Noch nicht beobachtet</option><option value="off">Bleibt vollständig dunkel</option><option value="brief">Blitzt kurz auf</option><option value="on">Leuchtet dauerhaft</option></select></div>
+            <div><label class="field-label" for="linuxOpenRgb">GPU in OpenRGB unter Linux</label><select id="linuxOpenRgb"><option value="notdone">Noch nicht getestet</option><option value="detected">Als GPU/RGB-Gerät erkannt</option><option value="missing">Nicht als GPU-Gerät erkannt</option><option value="error">OpenRGB startet nicht / Zugriffsfehler</option></select></div>
+            <div><label class="field-label" for="linuxRgbControl">Tatsächlicher LED-Farbtest</label><select id="linuxRgbControl"><option value="untested">Noch nicht durchgeführt</option><option value="works">Farbe lässt sich ändern</option><option value="dark">LED bleibt dunkel</option><option value="partial">Nur teilweise / sporadisch</option></select></div>
+          </div>
+          <div class="panel"><div class="panel-kicker">OPTIONAL / NUR NACH BASISDIAGNOSE</div><h3>OpenRGB als zweiter Steuerungsweg</h3><p><a href="https://openrgb.org/releases.html" target="_blank" rel="noopener noreferrer">OpenRGB – offizieller Download ↗</a>. Eine passende Linux-Version nur bei Bedarf verwenden und zunächst <strong>ohne sudo</strong> öffnen. Prüfe, ob ein eigenständiges Sapphire-/Nitro-Glow-Gerät angezeigt wird. Ein MSI-Mainboard-Eintrag allein bedeutet nicht, dass die GPU erkannt ist. Nur für ausdrücklich unterstützte Geräte eine statische Farbe testen – nicht unkontrolliert I²C scannen.</p>
+          <p><a href="https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396" target="_blank" rel="noopener noreferrer">Bekanntes Erkennungsproblem dieses Modells ↗</a>. Deshalb ist „GPU nicht gefunden“ unter OpenRGB <strong>kein</strong> Hardwaredefekt-Nachweis.</p></div>
+          <div class="button-row"><button type="button" class="btn primary" id="assessLinux">Gesamtergebnis bewerten</button><button type="button" class="btn secondary" id="linuxToReport">Zum Prüfbericht →</button></div>
+          <div class="result-box" id="linuxAssessment" aria-live="polite">Trage nach dem Test die Beobachtungen ein und klicke auf „Gesamtergebnis bewerten“.</div>
+          <div class="notice"><strong>Nach dem Test:</strong> Hardware und Betriebszustände erst vergleichen, dann mögliche Windows-Treiberänderungen entscheiden. Bei Linux-Live-Sitzungen gehen nicht dauerhaft gespeicherte Daten beim Herunterfahren verloren. Den Bericht vorher exportieren oder die Terminalausgabe kopieren.</div>
         </section>
         <section class="page" id="report" aria-labelledby="reportTitle">
           <div class="eyebrow">SCHRITT 06 · PROTOKOLL</div><h1 id="reportTitle">Diagnose <span>Ergebnisse</span></h1><p class="lead">Befunde zentral dokumentieren. Der Bericht wird in deinem Browser erstellt – keine Übertragung an einen Server.</p>
