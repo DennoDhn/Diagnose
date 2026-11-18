@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.3.1</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.3.2</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -92,17 +92,17 @@
 
 
           <div class="linux-feature" id="linuxLastDeepTest" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
-            <div class="micro">NÄCHSTER SCHRITT · NITRO-GLOW / BOOT / BIOS</div>
+            <div class="micro">NÄCHSTER SCHRITT · OPENRGB NEU ERKENNEN / NITRO GLOW</div>
             <h2>Warum leuchtet die Sapphire nicht beim Einschalten?</h2>
             <p><strong>Wichtiger Unterschied:</strong> Viele Lüfter und RAM-Module verwenden eigene Beleuchtungscontroller mit gespeicherten Standardmodi. Das sagt nichts darüber aus, ob die Sapphire zwingend beim Start leuchten muss. Ein zuvor gespeicherter „Off“- oder „External Source“-Modus kann auch nach Neustarts relevant bleiben.</p>
             <div class="notice"><strong>TriXX unter Linux:</strong> Sapphire stellt für diese Karte keine native Linux-Version von TriXX bereit. Wine ist für TriXX' direkte AMD-Treiber-/I²C-Anbindung kein zuverlässiger Gegencheck. Wir versuchen deshalb <strong>nicht</strong>, TriXX unter Linux zu emulieren. Das richtige Linux-Werkzeug bleibt OpenRGB; eine Karte kann damit grundsätzlich funktionieren, auch wenn die automatische Erkennung bei diesem Modell scheitert.</div>
             <div class="section-heading"><div><h2>A / OpenRGB: detaillierte Controller-Erkennung</h2><p>Einmal die Protokollierung aktivieren. Das zeigt, welche I²C-Adapter OpenRGB überhaupt der Sapphire zuordnet.</p></div><span class="tag">DIAGNOSE</span></div>
-            <p>Der Befehl nutzt die schon funktionierende, entpackte OpenRGB-1.1-Version in <code>/tmp</code>. <strong>Keine Installation und keine eigenen I²C-Registerbefehle.</strong> Wie bei der bisherigen Geräteliste kann OpenRGB bei seiner normalen Erkennung Hardware abfragen.</p>
+            <p><strong>Aktualisiert nach deinem Screenshot:</strong> Der temporäre Ordner <code>/tmp</code> wurde geleert. Der neue Befehl sucht deshalb zuerst die vorhandene OpenRGB-1.1-AppImage-Datei in <code>Downloads</code> und entpackt sie bei Bedarf <strong>automatisch neu</strong>. Falls auch <code>libOpenGL.so.0</code> wieder fehlt, wird das offizielle Ubuntu-Paket <code>libopengl0</code> in der laufenden Live-Sitzung installiert. Danach startet die ausführliche Geräteerkennung. <strong>Keine eigenen I²C-Registerbefehle.</strong> OpenRGB kann bei seiner normalen Erkennung Hardware abfragen.</p><p class="support-text">Falls der Ubuntu-Neustart auch den Download entfernt hat, <a href="https://openrgb.org/releases.html" target="_blank" rel="noopener noreferrer">OpenRGB 1.1 für Linux x86_64 als AppImage erneut herunterladen ↗</a>. Die Datei nach <code>Downloads</code> speichern; dann denselben neuen Befehl verwenden.</p>
             <div class="code-panel"><div class="code-head"><strong>OpenRGB 1.1 · ausführliches Geräteprotokoll</strong><button class="btn primary" type="button" data-copy="openrgbDetailed">Befehl kopieren</button></div><pre id="openrgbDetailedCode" tabindex="0"></pre></div>
             <label class="field-label" for="openrgbDetailedOutput">Ergebnis einfügen oder Foto schicken</label>
             <textarea id="openrgbDetailedOutput" rows="8" placeholder="GPU-DIAG-OPENRGB-VERBOSE-BEGIN&#10;... Device 1002:744C Subsystem 1DA2:E471 ...&#10;...&#10;GPU-DIAG-OPENRGB-VERBOSE-END"></textarea>
             <div class="button-row"><button class="btn secondary" type="button" id="importOpenrgbDetailed">Protokolldatei öffnen</button><input id="openrgbDetailedFile" class="visually-hidden" type="file" accept=".txt,.log,text/plain" aria-label="OpenRGB-Protokolldatei auswählen"><button class="btn primary" type="button" id="parseOpenrgbDetailed">Protokoll auswerten</button><button class="btn ghost" type="button" id="clearOpenrgbDetailed">Löschen</button></div>
-            <div id="openrgbDetailedResult" class="result-box" aria-live="polite">Noch kein erweitertes OpenRGB-1.1-Protokoll eingelesen.</div>
+            <div id="openrgbDetailedResult" class="result-box" aria-live="polite">Der letzte Lauf meldete APPIMAGE_NOT_FOUND_IN_TMP. Der neue Befehl kann das AppImage automatisch erneut entpacken.</div>
             <div class="section-heading"><div><h2>B / Kontrollierter Kaltstart ohne ARGB-Kabel</h2><p>Wenn auch der ausführliche Scan den Controller nicht erreicht, prüfen wir den gespeicherten Zustand ohne Windows und ohne Mainboard-RGB-Signal.</p></div></div>
             <div class="wizard-list">
               <div class="wizard-step"><span class="wizard-num">1</span><div><strong>PC vollständig herunterfahren und stromlos machen</strong><p>PC ausschalten, Netzteil ausschalten, Netzstecker ziehen. Ein-/Ausschalttaste des PCs einige Sekunden drücken. Den bisherigen Kurztest haben wir bereits durchgeführt – hier geht es um eine <strong>längere stromlose Unterbrechung</strong>.</p></div></div>
