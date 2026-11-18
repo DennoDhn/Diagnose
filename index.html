@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.3.0</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.3.1</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -101,7 +101,7 @@
             <div class="code-panel"><div class="code-head"><strong>OpenRGB 1.1 · ausführliches Geräteprotokoll</strong><button class="btn primary" type="button" data-copy="openrgbDetailed">Befehl kopieren</button></div><pre id="openrgbDetailedCode" tabindex="0"></pre></div>
             <label class="field-label" for="openrgbDetailedOutput">Ergebnis einfügen oder Foto schicken</label>
             <textarea id="openrgbDetailedOutput" rows="8" placeholder="GPU-DIAG-OPENRGB-VERBOSE-BEGIN&#10;... Device 1002:744C Subsystem 1DA2:E471 ...&#10;...&#10;GPU-DIAG-OPENRGB-VERBOSE-END"></textarea>
-            <div class="button-row"><button class="btn primary" type="button" id="parseOpenrgbDetailed">Protokoll auswerten</button><button class="btn ghost" type="button" id="clearOpenrgbDetailed">Löschen</button></div>
+            <div class="button-row"><button class="btn secondary" type="button" id="importOpenrgbDetailed">Protokolldatei öffnen</button><input id="openrgbDetailedFile" class="visually-hidden" type="file" accept=".txt,.log,text/plain" aria-label="OpenRGB-Protokolldatei auswählen"><button class="btn primary" type="button" id="parseOpenrgbDetailed">Protokoll auswerten</button><button class="btn ghost" type="button" id="clearOpenrgbDetailed">Löschen</button></div>
             <div id="openrgbDetailedResult" class="result-box" aria-live="polite">Noch kein erweitertes OpenRGB-1.1-Protokoll eingelesen.</div>
             <div class="section-heading"><div><h2>B / Kontrollierter Kaltstart ohne ARGB-Kabel</h2><p>Wenn auch der ausführliche Scan den Controller nicht erreicht, prüfen wir den gespeicherten Zustand ohne Windows und ohne Mainboard-RGB-Signal.</p></div></div>
             <div class="wizard-list">
