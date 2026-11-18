@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.0 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.1 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -27,27 +27,18 @@
     "  'GPU-DIAG-END'",
     "} catch { 'GPU-DIAG-ERROR: '+$_.Exception.Message }"
   ].join("\n");
-  const LINUX = [
-    "echo 'GPU-DIAG-LINUX-BEGIN'",
-    "printf 'Kernel: '; uname -r",
-    "printf 'Distribution: '; grep '^PRETTY_NAME=' /etc/os-release",
-    "echo '--- Display PCI devices ---'",
-    "lspci -nnk | grep -E -i -A 4 'VGA compatible controller|3D controller|Display controller'",
-    "echo '--- DRM PCI IDs ---'",
-    "for d in /sys/class/drm/card[0-9]*/device; do if [ -d \"$d\" ]; then echo \"$d\"; for f in vendor device subsystem_vendor subsystem_device; do if [ -r \"$d/$f\" ]; then printf '%s=' \"$f\"; cat \"$d/$f\"; fi; done; fi; done",
-    "echo '--- I2C-Gerätedateien (ohne Registerscan) ---'",
-    "ls /dev/i2c-* 2>/dev/null || echo 'Keine zugänglichen I2C-Knoten'",
-    "echo 'GPU-DIAG-LINUX-END'"
-  ].join("\n");
+  const LINUX = "set +e\necho 'GPU-DIAG-LINUX-BEGIN'\nprintf 'KERNEL: '; uname -r\nprintf 'OS: '; if [ -r /etc/os-release ]; then sed -n 's/^PRETTY_NAME=//p' /etc/os-release | head -n 1; else echo 'unknown'; fi\nprintf 'ARCH: '; uname -m\necho '--- GPU PCI ---'\nif command -v lspci >/dev/null 2>&1; then\n    lspci -Dnnk | grep -E -i -A 4 'VGA compatible controller|3D controller|Display controller'\nelse\n    echo 'lspci: not installed'\nfi\necho '--- DRM PCI IDs ---'\nfor d in /sys/class/drm/card[0-9]*/device; do\n    [ -d \"$d\" ] || continue\n    printf 'DRM_DEVICE: %s ' \"$d\"\n    for field in vendor device subsystem_vendor subsystem_device; do\n        if [ -r \"$d/$field\" ]; then printf '%s=%s ' \"$field\" \"$(cat \"$d/$field\")\"; fi\n    done\n    if [ -L \"$d/driver\" ]; then printf 'driver=%s ' \"$(basename \"$(readlink -f \"$d/driver\")\")\"; fi\n    echo\ndone\necho '--- KERNEL MODULES ---'\nif command -v lsmod >/dev/null 2>&1; then\n    lsmod | grep -E '^(amdgpu|i2c_dev|i2c_algo_bit|drm_)' || echo 'No matching loaded modules'\nelse\n    echo 'lsmod not available'\nfi\necho '--- I2C DEVICE NODES (existence only) ---'\nfound=0\nfor d in /dev/i2c-*; do\n    [ -e \"$d\" ] || continue\n    found=1\n    ls -l \"$d\"\ndone\n[ \"$found\" -eq 1 ] || echo 'No accessible /dev/i2c device nodes'\necho 'GPU-DIAG-LINUX-END'\n";
+  const LINUX_DEEP = "# GPU DIAGNOSE – Linux I2C-Busübersicht: nur Dateisystem-Metadaten lesen\necho 'GPU-DIAG-I2C-BEGIN'\necho '--- I2C ADAPTER / NAME / SYSFS PARENT ---'\nn=0\nfor p in /sys/bus/i2c/devices/i2c-*/name; do\n  [ -r \"$p\" ] || continue\n  n=$((n+1))\n  printf 'I2C_BUS: %s | NAME: ' \"$(basename \"$(dirname \"$p\")\")\"\n  cat \"$p\"\n  printf 'PARENT: '\n  readlink -f \"$(dirname \"$p\")\"\ndone\n[ \"$n\" -gt 0 ] || echo 'No I2C bus metadata visible'\necho '--- GPU KERNEL DRIVER BINDING ---'\nfor d in /sys/class/drm/card[0-9]*/device; do\n  [ -d \"$d\" ] || continue\n  printf 'GPU_PCI_PATH: '\n  readlink -f \"$d\"\n  printf 'GPU_DRIVER: '\n  if [ -L \"$d/driver\" ]; then basename \"$(readlink -f \"$d/driver\")\"; else echo 'not bound'; fi\ndone\necho 'GPU-DIAG-I2C-END'\n";
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
+    linuxDeep: LINUX_DEEP,
     nitroPy: "py .\\tools\\nitroglow_probe.py read",
     nitroExe: ".\\NitroGlowFix.exe --read"
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["windowsOutput","nitroOutput","linuxOutput","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const tracked = ["windowsOutput","nitroOutput","linuxOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
   const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null};
   let timer;
   function toast(msg) {
@@ -152,21 +143,65 @@
   function parseLinux(){
     const t=$("linuxOutput").value.trim();
     if(!t){outcome($("linuxResult"),"warn","Noch keine Linux-Ausgabe eingefügt.");return;}
-    const found=/RX 7900 XTX|1002:744c|\b744c\b/i.test(t);
-    const amdgpu=/Kernel driver in use: amdgpu/i.test(t);
-    const complete=t.includes("GPU-DIAG-LINUX-BEGIN")&&t.includes("GPU-DIAG-LINUX-END");
-    const i2c=/\/dev\/i2c-[0-9]+/.test(t);
-    const result=[
-      "Live-Ausgabe: "+(complete?"vollständig markiert":"Markierungen unvollständig"),
-      "RX 7900 XTX (PCI 744C) erkannt: "+(found?"JA":"nicht eindeutig"),
-      "Kernel-Treiber amdgpu zugeordnet: "+(amdgpu?"JA":"nicht belegt"),
-      "I²C-Gerätedateien vorhanden: "+(i2c?"JA":"nicht nachgewiesen"),
-      "",
-      "Wichtig: Die Existenz von /dev/i2c-* beweist KEINEN Zugriff auf den Sapphire-RGB-Controller. Eine nicht erkannte RGB-Funktion unter Linux beweist ebenfalls keinen Hardwaredefekt."
-    ].join("\n");
-    state.lastLinux={ok:complete&&found,at:new Date().toISOString(),found,amdgpu,i2c};
-    outcome($("linuxResult"),found?"good":"warn",result);
+    const base=t.match(/GPU-DIAG-LINUX-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-LINUX-END/i);
+    const bus=t.match(/GPU-DIAG-I2C-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-I2C-END/i);
+    const combined=(base?.[1]||"")+"\n"+(bus?.[1]||"");
+    const gpu=/\bRX\s*7900\s*XTX\b|\[1002:744c\]|device=0x744c/i.test(combined);
+    const amd=/Kernel driver in use:\s*amdgpu|driver=amdgpu|GPU_DRIVER:\s*amdgpu|^\s*amdgpu\s+\d+/im.test(combined);
+    const i2cNodes=/\/dev\/i2c-\d+/.test(combined);
+    const i2cBuses=/I2C_BUS:\s*i2c-\d+/i.test(combined);
+    const amdI2c=/I2C_BUS:[^\r\n]*(?:AMD|AMDGPU|GPU|Radeon)/i.test(combined);
+    const kernel=base?.[1].match(/KERNEL:\s*([^\r\n]+)/i)?.[1]?.trim()||"nicht erkannt";
+    const lines=[];
+    if(!base)lines.push("Achtung: Basisdatenblock fehlt oder ist nicht vollständig. Bitte den Abschnitt zwischen GPU-DIAG-LINUX-BEGIN und GPU-DIAG-LINUX-END einfügen.");
+    else{
+      lines.push("Kernel: "+kernel);
+      lines.push("RX 7900 XTX anhand PCI-ID/Name gefunden: "+(gpu?"JA":"NICHT EIND. / NEIN"));
+      lines.push("AMD-Kernelmodul/Bindung amdgpu: "+(amd?"NACHGEWIESEN":"NICHT NACHGEWIESEN"));
+      lines.push("I²C-Gerätedateien: "+(i2cNodes?"SICHTBAR":"NICHT NACHGEWIESEN"));
+    }
+    lines.push("GPU-Buszuordnung (zweiter Block): "+(bus?(i2cBuses?"I²C-Busnamen sichtbar":"Keine I²C-Busnamen gefunden"):"NOCH NICHT IMPORTIERT"));
+    if(bus)lines.push("Busnamen mit AMD/GPU-Bezug: "+(amdI2c?"JA":"NICHT EIND. / NEIN"));
+    lines.push("");
+    if(gpu&&amd) lines.push("Zwischenergebnis: Linux erkennt den Grafikprozessor und bindet amdgpu ein. Das beweist NICHT, dass der Nitro-Glow-Controller per I²C erreichbar ist.");
+    else if(!base)lines.push("Die Ausgabe ist unvollständig, daher noch keine belastbare Linux-Erkennung.");
+    else lines.push("GPU- oder Treibererkennung unvollständig. Ursache zuerst dort klären; kein RGB-Hardwaredefekt daraus ableiten.");
+    if(!i2cNodes)lines.push("Fehlende /dev/i2c-Knoten können durch fehlende Berechtigung oder nicht geladenen i2c-dev-Treiber entstehen – kein Defektbeweis.");
+    lines.push("RGB-Farbtest und tatsächliches LED-Verhalten separat unter Schritt 05 erfassen.");
+    state.lastLinux={ok:!!base&&gpu&&amd,at:new Date().toISOString(),found:gpu,amdgpu:amd,i2c:i2cNodes,bus:!!bus,amdI2c,kernel};
+    outcome($("linuxResult"),base&&gpu&&amd?"good":"warn",lines.join("\n"));
+    $("linuxFacts").hidden=false;
+    $("linuxFactGpu").textContent=gpu?"Erkannt":"Nicht belegt";
+    $("linuxFactDriver").textContent=amd?"Gebunden":"Nicht belegt";
+    $("linuxFactI2c").textContent=i2cNodes||i2cBuses?"Sichtbar":"Nicht belegt";
+    $("linuxFactComplete").textContent=base?(bus?"Beide Blöcke":"Basisblock"):"Unvollständig";
     persist();
+  }
+  function assessLinux(){
+    const c=$("linuxCable").value,boot=$("linuxBootLed").value,rgb=$("linuxRgbControl").value,orb=$("linuxOpenRgb").value;
+    let cls="warn",msg=[];
+    if(rgb==="works"&&c==="internal"){
+      cls="good";
+      msg.push("STARKER BEFUND: Die GPU-LEDs lassen sich ohne externes ARGB-Kabel unter Ubuntu steuern. Die LED-Elektronik funktioniert grundsätzlich; ein Windows-/Treiber-/Softwarekonflikt wird wahrscheinlicher.");
+    } else if(rgb==="works"&&c==="external"){
+      cls="good";msg.push("Die Leisten reagieren unter Linux mit externem ARGB-Kabel. Damit ist der externe Lichtweg grundsätzlich funktionstüchtig; die interne Sapphire-Controllersteuerung bleibt separat ungeklärt.");
+    } else if(rgb==="works"){
+      cls="good";msg.push("Die Beleuchtung lässt sich unter Linux ändern. Die Aussagekraft für den internen Sapphire-Controller hängt davon ab, ob das externe ARGB-Kabel verbunden war.");
+    } else if(rgb==="dark"){
+      msg.push("Die LEDs sind unter Linux ebenfalls dunkel. Damit ist Windows allein nicht bestätigt. Ein Controller- oder Kabelproblem wird möglicher, ABER fehlende Linux-RGB-Unterstützung verhindert einen sicheren Hardwarebefund.");
+    } else if(rgb==="partial"){
+      msg.push("Die Beleuchtung reagiert nur sporadisch oder teilweise. Das ist ein relevanter Hinweis auf ein Steuerungs- oder Kontaktproblem, aber noch keine eindeutige Fehlerlokalisation.");
+    } else{
+      msg.push("Bisher liegt nur ein Hardware-/Erkennungstest vor. Ohne tatsächlichen Farbwechseltest ist der RGB-Controller unter Linux nicht verifiziert.");
+    }
+    if(orb==="missing")msg.push("OpenRGB hat die GPU nicht gelistet. Dieses Modell weist bekannte OpenRGB-Erkennungsprobleme auf – daraus keinen Defekt ableiten.");
+    if(orb==="error")msg.push("OpenRGB startete nicht oder hatte Berechtigungsprobleme. Kein Aussagewert zur Funktion des Sapphire-Controllers.");
+    if(boot==="brief")msg.push("Kurzes Aufleuchten beim Start beobachtet. Das bestätigt nur einen vorübergehenden LED-Zustand, keine funktionierende Controllerkommunikation.");
+    if(c==="unknown")msg.push("Bitte die Position des externen ARGB-Kabels dokumentieren; sonst können interne und externe Steuerung verwechselt werden.");
+    if(state.lastLinux?.found===false)msg.push("GPU-Erkennung in der Basisdiagnose war unvollständig; bitte Ausgabe zuerst überprüfen.");
+    $("linuxStatus").value=rgb==="works"?"works":rgb==="dark"?"dark":orb==="missing"?"unrecognized":"notdone";
+    state.fields.linuxStatus=$("linuxStatus").value;
+    outcome($("linuxAssessment"),cls,msg.join("\n\n"));persist();
   }
   function reportText(){
     const v=id=>$(id).value;
@@ -188,6 +223,10 @@
       "Externe 5V-ARGB-Steuerung: "+v("externalResult"),
       "Gelber Ausschaltblitz: "+v("bootFlash"),
       "Linux: "+v("linuxStatus"),
+      "Linux GPU-ARGB-Kabel: "+v("linuxCable"),
+      "Linux LED beim Booten: "+v("linuxBootLed"),
+      "Linux OpenRGB: "+v("linuxOpenRgb"),
+      "Linux tatsächliche Steuerung: "+v("linuxRgbControl"),
       "",
       "REGISTERAUSLESUNG",
       ctrlLines,
@@ -201,7 +240,7 @@
         "BIOS: "+(state.lastWindows.data?.BIOS?.Version||"?")+"; Mainboard: "+(state.lastWindows.data?.Mainboard?.Product||"?")+"; Display: "+[].concat(state.lastWindows.data?.DisplayAdapters||[]).map(x=>x.FriendlyName+" ("+x.Status+")").join(", "):
         "Noch kein vollständiger Windows-Scan importiert.",
       "LINUX-SCAN",
-      state.lastLinux?"RX 7900 XTX erkannt: "+state.lastLinux.found+"; amdgpu-Zuordnung: "+state.lastLinux.amdgpu+"; I²C-Knoten vorhanden: "+state.lastLinux.i2c:"Noch kein Linux-Scan importiert.",
+      state.lastLinux?"RX 7900 XTX erkannt: "+state.lastLinux.found+"; amdgpu-Zuordnung: "+state.lastLinux.amdgpu+"; I²C-Knoten vorhanden: "+state.lastLinux.i2c+"; Bus-Metadaten vorhanden: "+state.lastLinux.bus+"; Kernel: "+(state.lastLinux.kernel||"?"):"Noch kein Linux-Scan importiert.",
       "",
       "NOTIZEN",
       v("notes")||"(keine)",
@@ -237,6 +276,15 @@
   $("parseWindows").addEventListener("click",parseWindows);
   $("parseNitro").addEventListener("click",parseNitro);
   $("parseLinux").addEventListener("click",parseLinux);
+  $("assessLinux").addEventListener("click",assessLinux);
+  $("linuxToReport").addEventListener("click",()=>page("report"));
+  $("importLinuxLabel").addEventListener("click",()=>$("linuxFile").click());
+  $("linuxFile").addEventListener("change",async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    if(file.size>1024*1024){toast("Maximal 1 MB für Diagnoseprotokolle");return;}
+    try{$("linuxOutput").value=await file.text();state.fields.linuxOutput=$("linuxOutput").value;persist();toast("Datei nur lokal eingelesen");}
+    catch(err){toast("Datei konnte nicht gelesen werden");}e.target.value="";
+  });
   [["clearWindows","windowsOutput","windowsResult","lastWindows"],["clearNitro","nitroOutput","nitroResult","lastNitro"],["clearLinux","linuxOutput","linuxResult","lastLinux"]].forEach(([b,t,r,k])=>{
     $(b).addEventListener("click",()=>{$(t).value="";state.fields[t]="";state[k]=null;persist();outcome($(r),"","Ausgabe gelöscht.");});
   });
