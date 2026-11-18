@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.2.5</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.2.6</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -89,24 +89,24 @@
           <h1 id="linuxTitle">Ubuntu <span>Live Lab</span></h1>
           <p class="lead">Unabhängiger Gegencheck deiner Sapphire NITRO+ RX 7900 XTX – direkt vom Ubuntu-USB-Stick. Geführte Prüfungen, ein Klick zum Kopieren und nachvollziehbare Auswertung, ohne Windows zu installieren oder zu verändern.</p>
 
+
           <div class="linux-feature" id="linuxLatestTest" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
-            <div class="micro">JETZT · APPIMAGE-FEHLER BEHEBEN</div>
-            <h2>OpenRGB 1.1 ohne FUSE starten</h2>
-            <p>Dein aktueller Fehler lautet <code>dlopen(): error loading libfuse.so.2</code>. <strong>Die Sapphire wurde mit OpenRGB 1.1 noch nicht geprüft.</strong> Die AppImage-Datei ist bereits heruntergeladen; Ubuntu fehlt lediglich die FUSE-2-Bibliothek zum normalen Start.</p>
-            <p><strong>Empfohlen: kein neuer Download, keine Paketinstallation.</strong> Dieser Befehl entpackt das vorhandene AppImage in einen temporären Ubuntu-Ordner und startet die darin enthaltene OpenRGB-Version 1.1 zur Geräteerkennung. Die Windows-SSD und die vorhandene OpenRGB-0.9-Installation bleiben unverändert. OpenRGB kann bei seiner normalen Geräteerkennung Hardware ansprechen.</p>
-            <div class="code-panel"><div class="code-head"><strong>Schritt 1 · OpenRGB 1.1 FUSE-frei starten</strong><button class="btn primary" type="button" data-copy="openrgb11FuseFree">Befehl kopieren</button></div><pre id="openrgb11FuseFreeCode" tabindex="0"></pre></div>
-            <label class="field-label" for="openrgb11Output">Schritt 2 · Terminalausgabe einfügen (oder Foto schicken)</label>
-            <textarea id="openrgb11Output" rows="9" placeholder="GPU-DIAG-OPENRGB11-BEGIN&#10;OPENRGB11_FILE: ...&#10;OPENRGB11_STATUS: EXTRACT_OK&#10;... Geräte ...&#10;GPU-DIAG-OPENRGB11-END"></textarea>
-            <div class="button-row"><button type="button" id="parseOpenRgb11" class="btn primary">OpenRGB 1.1 auswerten</button><button type="button" id="clearOpenRgb11" class="btn ghost">Löschen</button></div>
-            <div class="result-box" id="openrgb11Result" role="status" aria-live="polite">Bisher nur FUSE-Startfehler – noch kein Hardwareergebnis von OpenRGB 1.1.</div>
-            <details class="optional-details"><summary>Alternative, falls das Entpacken fehlschlägt</summary>
-              <p>Ubuntu 26.04 benötigt für diese AppImages normalerweise das Paket <code>libfuse2t64</code>. Das folgende Paket installiert die fehlende Bibliothek <strong>nur in der laufenden Ubuntu-Live-Sitzung</strong> (Internetverbindung notwendig). <strong>Nicht</strong> das Paket <code>fuse</code> installieren.</p>
-              <div class="code-panel"><div class="code-head"><strong>Optional · FUSE-2-Kompatibilitätsbibliothek</strong><button class="btn small" type="button" data-copy="openrgbFusePackage">Befehl kopieren</button></div><pre id="openrgbFusePackageCode" tabindex="0"></pre></div>
-              <p>Nach erfolgreicher Installation kannst du den bisherigen <strong>OpenRGB-1.1-Hardwareerkennungsbefehl</strong> erneut nutzen:</p>
-              <div class="code-panel"><div class="code-head"><strong>OpenRGB 1.1 – normal starten</strong><button class="btn small" type="button" data-copy="openrgb11">Befehl kopieren</button></div><pre id="openrgb11Code" tabindex="0"></pre></div>
-              <a href="https://docs.appimage.org/user-guide/troubleshooting/fuse.html" target="_blank" rel="noopener noreferrer">Offizielle AppImage-Dokumentation zum FUSE-Problem ↗</a>
+            <div class="micro">JETZT · OPENRGB 1.1: FEHLENDE OPENGL-BIBLIOTHEK</div>
+            <h2>OpenRGB 1.1 starten – libOpenGL.so.0 beheben</h2>
+            <p><strong>Dein Ergebnis:</strong> <code>OPENRGB11_STATUS: EXTRACT_OK</code>, danach <code>libOpenGL.so.0: cannot open shared object file</code> und <code>OPENRGB11_LIST_EXIT: 127</code>. Die Anwendung wurde noch nicht gestartet; deshalb ist das <strong>kein Testresultat des Sapphire-RGB-Controllers</strong>.</p>
+            <p>Ubuntu 26.04 stellt die fehlende Bibliothek mit dem offiziellen Paket <a href="https://packages.ubuntu.com/resolute/libopengl0" target="_blank" rel="noopener noreferrer"><strong>libopengl0</strong></a> bereit. Der nächste Befehl installiert ausschließlich dieses Paket in der temporären Ubuntu-Live-Sitzung, kontrolliert die übrigen benötigten Bibliotheken und verwendet anschließend das <strong>bereits entpackte</strong> OpenRGB-1.1-AppImage. Kein erneuter Download und kein erneutes Entpacken erforderlich.</p>
+            <div class="code-panel"><div class="code-head"><strong>Ein Befehl · Bibliothek beheben &amp; OpenRGB 1.1 testen</strong><button type="button" class="btn primary" data-copy="openrgbFixOpenGL">Befehl kopieren</button></div><pre id="openrgbFixOpenGLCode" tabindex="0"></pre></div>
+            <p class="support-text">Das Terminal fragt gegebenenfalls nach Bestätigung für die Paketinstallation. Der Vorgang benötigt Internet. <strong>OpenRGB kann bei seiner normalen Geräteerkennung Hardware ansprechen.</strong> Es werden keine eigenen I²C-Schreibbefehle und keine Firmwareänderungen ausgeführt. Es erfolgt keine Installation auf der Windows-SSD.</p>
+            <label class="field-label" for="openrgb11Output">Ergebnis hier einfügen oder als Foto schicken</label>
+            <textarea id="openrgb11Output" rows="9" placeholder="GPU-DIAG-OPENRGB11-BEGIN&#10;OPENRGB11_STATUS: DEPENDENCIES_OK&#10;--- OPENRGB 1.1 DEVICES ---&#10;...&#10;GPU-DIAG-OPENRGB11-END"></textarea>
+            <div class="button-row"><button type="button" class="btn primary" id="parseOpenRgb11">OpenRGB 1.1 auswerten</button><button type="button" class="btn ghost" id="clearOpenRgb11">Ausgabe löschen</button></div>
+            <div class="result-box" id="openrgb11Result" role="status" aria-live="polite">Der letzte Versuch scheiterte an libOpenGL.so.0. Die Sapphire-Erkennung mit OpenRGB 1.1 wurde noch nicht ausgeführt.</div>
+            <details class="optional-details"><summary>Falls der Befehl weitere fehlende Bibliotheken meldet</summary>
+              <p>Der neue Test gibt gegebenenfalls <code>OPENRGB11_STATUS: MISSING_LIBRARIES</code> und die fehlenden Namen aus. Dann <strong>nicht</strong> auf Verdacht weitere Pakete installieren, sondern das Ergebnis zeigen. Die folgenden bisherigen Startbefehle bleiben verfügbar:</p>
+              <div class="code-panel"><div class="code-head"><strong>AppImage erneut FUSE-frei entpacken</strong><button type="button" class="btn small" data-copy="openrgb11FuseFree">Kopieren</button></div><pre id="openrgb11FuseFreeCode" tabindex="0"></pre></div>
+              <div class="code-panel"><div class="code-head"><strong>Alternative FUSE-2-Kompatibilitätsbibliothek</strong><button type="button" class="btn small" data-copy="openrgbFusePackage">Kopieren</button></div><pre id="openrgbFusePackageCode" tabindex="0"></pre></div>
             </details>
-            <p class="support-text"><strong>Die nächste Entscheidung:</strong> Nur wenn OpenRGB 1.1 jetzt wirklich eine Geräteliste ausgibt, können wir prüfen, ob der Sapphire-/Nitro-Glow-Controller neu erkannt wird. Andernfalls ist noch keine Schlussfolgerung zur RGB-Hardware möglich. <a href="https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396" target="_blank" rel="noopener noreferrer">Bekanntes Sapphire-Erkennungsproblem ↗</a></p>
+            <p class="support-text">Eine fehlende OpenRGB-Geräteerkennung wäre auch nach erfolgreichem Start noch kein Hardwaredefekt-Nachweis; das Modell hat dokumentierte Erkennungsprobleme. <a href="https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396" target="_blank" rel="noopener noreferrer">OpenRGB-Issue ↗</a>.</p>
           </div>
           <div class="linux-feature" id="linuxNextStep" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
             <div class="micro">VORHERIGER TEST · I2C9_OPEN ERFOLGREICH</div>
