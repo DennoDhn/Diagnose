@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.3.1 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.3.2 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -53,7 +53,7 @@
   const OPENRGB11_FUSE_FREE = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  WORK=\"$(mktemp -d /tmp/gpu-openrgb11.XXXXXX)\"\n  if [ -z \"$WORK\" ] || [ ! -d \"$WORK\" ]; then\n    echo 'OPENRGB11_STATUS: TEMP_DIR_FAILED'\n  elif (cd \"$WORK\" && \"$APP\" --appimage-extract >/dev/null 2>&1 && test -x squashfs-root/AppRun); then\n    echo 'OPENRGB11_STATUS: EXTRACT_OK'\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$WORK/squashfs-root/AppRun\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$WORK/squashfs-root/AppRun\" --list-devices 2>&1\n    echo \"OPENRGB11_LIST_EXIT: $?\"\n  else\n    echo 'OPENRGB11_STATUS: EXTRACT_FAILED'\n    echo 'AppImage konnte nicht extrahiert werden. FUSE-Kompatibilitaets-Paket als Alternative verwenden.'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
   const OPENRGB_FUSE_PACKAGE = "sudo apt update && sudo apt install libfuse2t64";
   const OPENRGB_FIX_OPENGL = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\necho 'OPENRGB11_FIX: libOpenGL.so.0 via libopengl0'\nif sudo apt install libopengl0; then\n  echo 'OPENRGB11_PACKAGE: INSTALLED_OR_PRESENT'\n  RUN=\"\"\n  for f in /tmp/gpu-openrgb11.*/squashfs-root/AppRun; do\n    if [ -x \"$f\" ]; then RUN=\"$f\"; break; fi\n  done\n  if [ -z \"$RUN\" ]; then\n    echo 'OPENRGB11_STATUS: EXTRACTED_DIR_NOT_FOUND'\n    echo 'Zuerst AppImage FUSE-frei entpacken (vorherigen Befehl auf der Seite).'\n  else\n    echo \"OPENRGB11_FILE: $RUN\"\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$RUN\" --version 2>&1\n    VR=$?\n    if [ \"$VR\" -ne 0 ]; then\n      echo 'OPENRGB11_STATUS: RUNTIME_ERROR'\n      echo \"OPENRGB11_VERSION_EXIT: $VR\"\n      echo '--- Fehlende Bibliotheken laut dynamischem Linker ---'\n      ldd \"$(dirname \"$RUN\")/usr/bin/OpenRGB\" 2>&1 | grep 'not found' || true\n    else\n      echo 'OPENRGB11_STATUS: DEPENDENCIES_OK'\n      echo '--- OPENRGB 1.1 DEVICES ---'\n      \"$RUN\" --list-devices 2>&1\n      echo \"OPENRGB11_LIST_EXIT: $?\"\n    fi\n  fi\nelse\n  echo 'OPENRGB11_STATUS: PACKAGE_INSTALL_FAILED'\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
-  const OPENRGB_DETAILED = "RUN=\"\"\nfor f in /tmp/gpu-openrgb11.*/squashfs-root/AppRun; do\n  if [ -x \"$f\" ]; then RUN=\"$f\"; break; fi\ndone\n{\n  echo 'GPU-DIAG-OPENRGB-VERBOSE-BEGIN'\n  if [ -n \"$RUN\" ]; then\n    echo \"OPENRGB_VERBOSE_APP: $RUN\"\n    echo '--- OPENRGB 1.1 DEVICE DETECTION / VERBOSE ---'\n    \"$RUN\" --loglevel 6 --list-devices 2>&1\n    echo \"OPENRGB_VERBOSE_EXIT: $?\"\n  else\n    echo 'OPENRGB_VERBOSE_ERROR: APPIMAGE_NOT_FOUND_IN_TMP'\n    echo 'Use the already available AppImage extraction control if /tmp was cleared.'\n  fi\n  echo 'GPU-DIAG-OPENRGB-VERBOSE-END'\n} | tee \"$HOME/Downloads/gpu-openrgb-verbose.log\"\necho 'Log: ~/Downloads/gpu-openrgb-verbose.log'";
+  const OPENRGB_DETAILED = "{\necho 'GPU-DIAG-OPENRGB-VERBOSE-BEGIN'\nRUN=\"\"\nfor f in /tmp/gpu-openrgb11.*/squashfs-root/AppRun; do\n  if [ -x \"$f\" ]; then RUN=\"$f\"; break; fi\ndone\nif [ -z \"$RUN\" ]; then\n  APP=\"\"\n  for f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n    if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\n  done\n  if [ -z \"$APP\" ]; then\n    echo 'OPENRGB_VERBOSE_ERROR: DOWNLOAD_NOT_FOUND'\n    echo 'Das OpenRGB 1.1 AppImage fehlt in Downloads. Auf der Webseite erneut herunterladen.'\n  else\n    echo \"OPENRGB_VERBOSE_SOURCE: $(basename \"$APP\")\"\n    WORK=\"$(mktemp -d /tmp/gpu-openrgb11.XXXXXX)\"\n    if [ -n \"$WORK\" ] && [ -d \"$WORK\" ] && chmod u+x \"$APP\" && (cd \"$WORK\" && \"$APP\" --appimage-extract >/dev/null 2>&1); then\n      RUN=\"$WORK/squashfs-root/AppRun\"\n      echo 'OPENRGB_VERBOSE_EXTRACTION: SUCCESS'\n      if [ ! -x \"$RUN\" ]; then RUN=\"\"; echo 'OPENRGB_VERBOSE_ERROR: APPRUN_MISSING'; fi\n    else\n      echo 'OPENRGB_VERBOSE_ERROR: EXTRACTION_FAILED'\n    fi\n  fi\nfi\nif [ -n \"$RUN\" ]; then\n  echo \"OPENRGB_VERBOSE_APP: $RUN\"\n  if ! ldconfig -p 2>/dev/null | grep -q 'libOpenGL.so.0'; then\n    echo 'OPENRGB_VERBOSE_DEPENDENCY: libOpenGL.so.0 fehlt; installiere libopengl0 aus Ubuntu-Repositories'\n    if ! sudo apt install -y libopengl0; then\n      echo 'OPENRGB_VERBOSE_ERROR: LIBOPENGL_INSTALL_FAILED'\n      RUN=\"\"\n    fi\n  fi\nfi\nif [ -n \"$RUN\" ]; then\n  echo '--- OPENRGB 1.1 VERSION ---'\n  \"$RUN\" --version 2>&1\n  VEXIT=$?\n  echo \"OPENRGB_VERBOSE_VERSION_EXIT: $VEXIT\"\n  if [ \"$VEXIT\" -eq 0 ]; then\n    echo '--- OPENRGB 1.1 DEVICE DETECTION / VERBOSE ---'\n    \"$RUN\" --loglevel 6 --list-devices 2>&1\n    echo \"OPENRGB_VERBOSE_EXIT: $?\"\n  else\n    echo 'OPENRGB_VERBOSE_ERROR: START_FAILED'\n    ldd \"$(dirname \"$RUN\")/usr/bin/OpenRGB\" 2>&1 | grep 'not found' || true\n  fi\nfi\necho 'GPU-DIAG-OPENRGB-VERBOSE-END'\n} 2>&1 | tee \"$HOME/Downloads/gpu-openrgb-verbose.log\"\necho 'Log: ~/Downloads/gpu-openrgb-verbose.log'";
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
@@ -349,7 +349,9 @@
     const match=raw.match(/GPU-DIAG-OPENRGB-VERBOSE-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-OPENRGB-VERBOSE-END/i);
     if(!match){outcome($("openrgbDetailedResult"),"warn","Bitte das vollständige Log inklusive BEGIN- und END-Markierung einfügen.");return;}
     const body=match[1];
-    const noApp=/OPENRGB_VERBOSE_ERROR:\s*APPIMAGE_NOT_FOUND_IN_TMP/i.test(body);
+    const error=body.match(/OPENRGB_VERBOSE_ERROR:\s*([A-Z_]+)/i)?.[1]||null;
+    const noApp=error==="DOWNLOAD_NOT_FOUND";
+    const ran=/--- OPENRGB 1\.1 DEVICE DETECTION \/ VERBOSE ---/i.test(body);
     const gpuIdentity=/Device\s+1002:744C[\s\S]{0,200}?1DA2:E471|1002:744C/i.test(body);
     const adapters=(body.match(/Registering I2C interface:[^\r\n]+/gi)||[]);
     const matching=adapters.filter(x=>/1002:744C|1DA2:E471/i.test(x));
@@ -358,7 +360,7 @@
     const errors=(body.match(/\[i2c_smbus_linux\][^\r\n]+|Permission denied[^\r\n]*|Failed to (read|detect|open)[^\r\n]*/gi)||[]);
     const exit=body.match(/OPENRGB_VERBOSE_EXIT:\s*(-?\d+)/i)?.[1]||"unbekannt";
     const summary=[
-      "OpenRGB-Start: "+(noApp?"AppImage nicht gefunden":"Protokoll erhalten"),
+      "OpenRGB-Start: "+(noApp?"AppImage nicht im Downloads-Ordner":error?"Fehler: "+error:ran?"Geräteerkennung ausgeführt":"nur Teilprotokoll erhalten"),
       "OpenRGB-Exitcode: "+exit,
       "Sapphire-PCI-ID 1002:744C im Erkennungslog: "+(gpuIdentity?"JA":"nicht nachgewiesen"),
       "I²C-Adapter-Registrierungen insgesamt: "+adapters.length,
@@ -367,13 +369,15 @@
       "Auffällige I²C-Meldungen: "+errors.length,
       ""
     ];
-    if(noApp)summary.push("Die vorher extrahierte AppImage-Datei fehlt; sie muss aus der bereits heruntergeladenen Datei neu extrahiert werden.");
+    if(noApp)summary.push("Das AppImage fehlt in Downloads, möglicherweise nach einem Ubuntu-Neustart. Bitte die offizielle OpenRGB-1.1-AppImage-Datei erneut herunterladen.");
+    else if(error)summary.push("Das OpenRGB-Protokoll konnte wegen "+error+" nicht vollständig erstellt werden. Die Sapphire wurde nicht geprüft; bitte die vollständige Fehlermeldung zeigen.");
+    else if(!ran)summary.push("Es ist keine abgeschlossene OpenRGB-Geräteerkennung erkennbar. Bitte vollständige Ausgabe zeigen.");
     else if(sapphire.length)summary.push("OpenRGB meldet jetzt ein eigenes Sapphire/Nitro-Glow-Gerät. Ein tatsächlicher Farbwechsel wurde noch nicht geprüft.");
-    else if(gpuIdentity)summary.push("WICHTIG: OpenRGB erkennt den PCI-/I²C-Adapter der Sapphire, führt aber kein eigenständiges Nitro-Glow-RGB-Gerät in der Liste. PCI-Erkennung allein bedeutet NICHT, dass der RGB-Controller antwortet.");
-    else summary.push("Keine eindeutige Zuordnung der Sapphire-I²C-Adapter im OpenRGB-Log. Das kann ein Software-/Erkennungsproblem sein und ist noch kein Hardwaredefekt-Beweis.");
+    else if(ran&&gpuIdentity)summary.push("WICHTIG: OpenRGB erkennt den PCI-/I²C-Adapter der Sapphire, führt aber kein eigenständiges Nitro-Glow-RGB-Gerät in der Liste. PCI-Erkennung allein bedeutet NICHT, dass der RGB-Controller antwortet.");
+    else if(ran)summary.push("Keine eindeutige Zuordnung der Sapphire-I²C-Adapter im OpenRGB-Log. Das kann ein Software-/Erkennungsproblem sein und ist noch kein Hardwaredefekt-Beweis.");
     if(errors.length)summary.push("Erste Warnung: "+errors[0]);
     summary.push("Kein automatischer Controller-Reset; wir vermeiden direkte I²C-Registerschreibversuche.");
-    state.lastOpenrgbDetailed={at:new Date().toISOString(),adapterDetected:gpuIdentity,adapterCount:matching.length,nitroDevice:!!sapphire.length,errors:errors.length,exit};
+    state.lastOpenrgbDetailed={at:new Date().toISOString(),adapterDetected:ran&&gpuIdentity,adapterCount:matching.length,nitroDevice:ran&&!!sapphire.length,errors:errors.length,exit,ran,error};
     outcome($("openrgbDetailedResult"),sapphire.length?"good":"warn",summary.join("\n"));
     persist();
   }
