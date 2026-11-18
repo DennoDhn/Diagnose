@@ -88,6 +88,13 @@
           <div class="eyebrow">LINUX DIAGNOSESTATION · READ ONLY FIRST</div>
           <h1 id="linuxTitle">Ubuntu <span>Live Lab</span></h1>
           <p class="lead">Unabhängiger Gegencheck deiner Sapphire NITRO+ RX 7900 XTX – direkt vom Ubuntu-USB-Stick. Geführte Prüfungen, ein Klick zum Kopieren und nachvollziehbare Auswertung, ohne Windows zu installieren oder zu verändern.</p>
+          <div class="linux-feature" id="linuxNextStep" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
+            <div class="micro">JETZT · OPENRGB IST INSTALLIERT</div>
+            <h2>Nächster Befehl: OpenRGB-Geräteliste</h2>
+            <p>Direkt hier oben kopieren, im Ubuntu-Terminal mit <strong>Strg + Umschalt + V</strong> einfügen und Enter drücken.</p>
+            <div class="code-panel"><div class="code-head"><strong>OpenRGB-Geräte anzeigen</strong><button class="btn primary" type="button" data-copy="openrgbList">Befehl kopieren</button></div><pre>openrgb --list-devices</pre></div>
+            <p>Danach die Ausgabe fotografieren oder unter <strong>04B / Schritt B</strong> auf der Seite einfügen.</p>
+          </div>
           <div class="linux-stagebar" aria-label="Diagnoseablauf"><span class="stage">01 · Boot</span><span class="stage">02 · GPU</span><span class="stage">03 · I²C</span><span class="stage">04 · RGB</span><span class="stage">05 · Bericht</span></div>
           <div class="notice"><strong>Wichtig:</strong> Die Webseite kann keine Hardware auslesen. Die angezeigten Terminal-Befehle sind explizit nur lesend; du kopierst sie in das lokale Ubuntu-Terminal und fügst die Ausgabe hier ein. Keine Fernsteuerung, kein Installationsskript, keine Änderung an der Kunden-SSD.</div>
           <div class="linux-feature"><div class="micro">WAS WIR KLÄREN WOLLEN</div><h2>Liegt der Fehler an Windows – oder bleibt er unabhängig davon bestehen?</h2><p>Wenn die GPU-Beleuchtung <strong>ohne externes ARGB-Kabel unter Linux wirklich steuerbar ist</strong>, ist das ein starker Hinweis auf ein Windows-/Treiberproblem. Bleibt sie aus, ist ein Hardwaredefekt <strong>noch nicht bewiesen</strong>: Linux/OpenRGB unterstützt nicht jeden GPU-RGB-Controller zuverlässig.</p></div>
