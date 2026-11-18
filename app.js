@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.2.6 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.2.7 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -71,7 +71,7 @@
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["openrgb11Output","linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const tracked = ["cableInspection","cableCrossTest","openrgb11Output","linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
   const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null,lastLinuxOpenTest:null,lastOpenRgb11:null};
   let timer;
   function toast(msg) {
@@ -341,6 +341,29 @@
     outcome($("openrgbResult"),gpu.length?"good":"warn",msgs.join("\n"));
     persist();
   }
+  function assessCable(){
+    const c=$("cableInspection").value, t=$("cableCrossTest").value;
+    let status="warn",msgs=[];
+    if(t==="working"){
+      status="good";
+      msgs.push("Die Beleuchtung reagiert mit einem geprüft kompatiblen Kabel wieder. Das ursprüngliche Kabel oder dessen Kontaktierung ist damit die wahrscheinlichste Fehlerursache.");
+    }else if(t==="dark"){
+      msgs.push("Auch mit geprüft kompatiblem Kabel bleibt die Sapphire dunkel. Da sowohl interne TriXX-Steuerung als auch externe Steuerung erfolglos waren, ist eine GPU-seitige RGB-Störung wahrscheinlicher. Endgültige Bestätigung durch fachgerechte Reparaturdiagnose bzw. Test in anderem PC.");
+      msgs.push("Empfehlung: Händler/Sapphire mit dokumentiertem Fehlerbild kontaktieren; ohne weitere I²C- oder Firmware-Experimente.");
+    }else if(t==="notavailable"){
+      msgs.push("Das Verbindungskabel wurde noch nicht als Fehlerquelle ausgeschlossen. Das fehlende OpenRGB-Gerät und Linux-Buszugriff allein erlauben keine Hardwaredefekt-Diagnose.");
+      msgs.push("Nächste sinnvolle Maßnahme: ein nachweislich passendes Kabel beschaffen oder das vorhandene stromlos fachgerecht prüfen lassen.");
+    }else{
+      msgs.push("Bislang kein Ersatzkabel-Gegencheck. Als Nächstes Anschluss und Verbindungskabel prüfen.");
+    }
+    if(c==="damaged")msgs.push("Beim Kabel/Anschluss wurde ein möglicher physischer Schaden gefunden. Nichts unter Spannung ausprobieren; Fotos anfertigen und erst mit sicher passendem Ersatz bzw. Reparaturbetrieb fortfahren.");
+    else if(c==="looks_ok")msgs.push("Unauffällige Sichtprüfung schließt eine gebrochene Leitung oder schlechten Kontakt nicht aus.");
+    else if(c==="inconclusive")msgs.push("Die Sichtprüfung reicht zur Bewertung noch nicht aus. Stecker-/Anschlussfotos oder fachgerechte Durchgangsprüfung helfen.");
+    msgs.push("Sicherheit: Nur 5V-ARGB, kein 12V-RGB. Umstecken ausschließlich stromlos; kein beliebiges Kabel mit unbekannter Pinbelegung.");
+    outcome($("cableResult"),status,msgs.join("\n\n"));
+    state.lastCable={at:new Date().toISOString(),inspection:c,crossTest:t,assessment:msgs.join(" ")};
+    persist();
+  }
   function assessLinux(){
     const c=$("linuxCable").value,boot=$("linuxBootLed").value,rgb=$("linuxRgbControl").value,orb=$("linuxOpenRgb").value;
     let cls="warn",msg=[];
@@ -391,6 +414,8 @@
       "Linux LED beim Booten: "+v("linuxBootLed"),
       "Linux OpenRGB: "+v("linuxOpenRgb"),
       "Linux tatsächliche Steuerung: "+v("linuxRgbControl"),
+      "Sapphire-Kabel-Sichtprüfung: "+v("cableInspection"),
+      "Sapphire-Kabel-Gegencheck: "+v("cableCrossTest"),
       "OpenRGB eigenständige Sapphire-Erkennung: "+(state.lastOpenRgb?(state.lastOpenRgb.gpu?"JA":"NEIN"):"nicht geprüft"),
       "OpenRGB 1.1 Vergleich: "+(state.lastOpenRgb11?(state.lastOpenRgb11.sapphire?"Sapphire erkannt":"Sapphire nicht erkannt / Startproblem"):"nicht durchgeführt"),
       "Linux GPU-OEM-Bus i2c-9 lesbar: "+(state.lastLinuxAccess?.i2c9AccessKnown?(state.lastLinuxAccess.i2c9Readable?"JA":"NEIN"):"nicht geprüft"),
@@ -443,6 +468,7 @@
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>page(b.dataset.goto)));
   $$("[data-task]").forEach(b=>b.addEventListener("change",e=>{state.tasks[e.target.dataset.task]=e.target.checked;persist();progress();}));
   tracked.forEach(id=>$(id).addEventListener("input",storeField));
+  $("assessCable").addEventListener("click",assessCable);
   $("parseWindows").addEventListener("click",parseWindows);
   $("parseNitro").addEventListener("click",parseNitro);
   $("parseLinux").addEventListener("click",parseLinux);
