@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.2.2</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.2.3</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -89,16 +89,16 @@
           <h1 id="linuxTitle">Ubuntu <span>Live Lab</span></h1>
           <p class="lead">Unabhängiger Gegencheck deiner Sapphire NITRO+ RX 7900 XTX – direkt vom Ubuntu-USB-Stick. Geführte Prüfungen, ein Klick zum Kopieren und nachvollziehbare Auswertung, ohne Windows zu installieren oder zu verändern.</p>
           <div class="linux-feature" id="linuxNextStep" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
-            <div class="micro">JETZT · NACH DEM OPENRGB-TEST</div>
-            <h2>OpenRGB sieht RAM und MSI – aber keine Sapphire</h2>
-            <p>Deine Ausgabe zeigt <strong>3 RGB-Geräte</strong> (2× Corsair Dominator, 1× MSI MPG B650 EDGE WIFI). Der GPU-RGB-Controller fehlt. Zusätzlich meldet OpenRGB mehrfach <code>Failed to read i2c device PCI device ID</code>. Dieser Fehler ist für die Sapphire NITRO+ RX 7900 XTX bereits dokumentiert. <a href="https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396" rel="noopener noreferrer" target="_blank">Passender OpenRGB-Fehlerbericht ↗</a></p>
-            <div class="micro">NÄCHSTER SCHRITT · RECHTE UND OPENRGB-VERSION PRÜFEN</div>
-            <p>Einmal den <strong>nur lesenden</strong> Befehl kopieren. Er ermittelt, ob dein Ubuntu-Benutzer den GPU-OEM-Bus <code>/dev/i2c-9</code> überhaupt öffnen dürfte. <strong>Kein sudo und keine Registeränderung.</strong></p>
-            <div class="code-panel"><div class="code-head"><strong>OpenRGB-Version &amp; GPU-I²C-Zugriff</strong><div><span class="tag safe">READ ONLY</span><button class="btn primary" type="button" data-copy="linuxAccess">Befehl kopieren</button></div></div><pre id="linuxNextCode" tabindex="0"></pre></div>
-            <label class="field-label" for="linuxAccessOutput">Ausgabe hier einfügen (oder Foto schicken)</label>
-            <textarea id="linuxAccessOutput" rows="7" placeholder="GPU-DIAG-ACCESS-BEGIN&#10;OPENRGB_VERSION: ...&#10;USER_GROUPS: ...&#10;I2C_BUS_9 ...&#10;GPU-DIAG-ACCESS-END"></textarea>
-            <div class="button-row"><button type="button" id="parseLinuxAccess" class="btn primary">Berechtigungen auswerten</button><button type="button" id="clearLinuxAccess" class="btn ghost">Löschen</button></div>
-            <div class="result-box" id="linuxAccessResult" role="status" aria-live="polite">Nächster Test steht bereit. OpenRGB nicht vorschnell als root starten.</div>
+            <div class="micro">JETZT · PRÜFSCHRITT NACH DEN FOTOS</div>
+            <h2>Kann Ubuntu den Sapphire-OEM-Bus wirklich öffnen?</h2>
+            <p><strong>Vorheriges Ergebnis:</strong> Die RX 7900 XTX und der AMD-Treiber werden erkannt. OpenRGB 0.9+ listet zwei Corsair-RAM-Module und das MSI-Mainboard, aber keinen Sapphire-Controller. <code>/dev/i2c-9</code> gehört laut Geräteanzeige <code>root:root</code>; der einfache <code>-r</code>-Test zeigte dennoch <code>yes</code>. Das prüfen wir mit einem echten, nur lesenden Dateideskriptor.</p>
+            <p><strong>Dieser Befehl öffnet den Gerätepfad ausschließlich lesend und schließt ihn direkt wieder.</strong> Kein I²C-Transfer, keine Hardware-Kommandos, kein sudo.</p>
+            <div class="code-panel"><div class="code-head"><strong>GPU-I²C-9 · tatsächliches Öffnen testen</strong><div><span class="tag safe">READ ONLY</span><button class="btn primary" type="button" data-copy="linuxOpenTest">Befehl kopieren</button></div></div><pre id="linuxOpenTestCode" tabindex="0"></pre></div>
+            <label class="field-label" for="linuxOpenTestOutput">Ausgabe einfügen oder fotografieren</label>
+            <textarea id="linuxOpenTestOutput" rows="6" placeholder="GPU-DIAG-I2C-OPEN-BEGIN&#10;I2C9_OPEN: SUCCESS oder FAIL ...&#10;GPU-DIAG-I2C-OPEN-END"></textarea>
+            <div class="button-row"><button type="button" id="parseLinuxOpenTest" class="btn primary">Ergebnis auswerten</button><button type="button" id="clearLinuxOpenTest" class="btn ghost">Löschen</button></div>
+            <div class="result-box" id="linuxOpenTestResult" role="status" aria-live="polite">Es ist noch nicht nachgewiesen, ob der normale Ubuntu-Benutzer den GPU-OEM-Bus tatsächlich öffnen kann.</div>
+            <p class="support-text">Auch <strong>SUCCESS</strong> bedeutet nur, dass sich die Schnittstelle öffnen lässt – nicht, dass der Nitro-Glow-Controller I²C-Kommandos beantwortet. <strong>FAIL</strong> mit „Permission denied“ erklärt möglicherweise die fehlende OpenRGB-Erkennung, ist aber kein Hardwaredefekt.</p>
           </div>
           <div class="linux-stagebar" aria-label="Diagnoseablauf"><span class="stage">01 · Boot</span><span class="stage">02 · GPU</span><span class="stage">03 · I²C</span><span class="stage">04 · RGB</span><span class="stage">05 · Bericht</span></div>
           <div class="notice"><strong>Wichtig:</strong> Die Webseite kann keine Hardware auslesen. Die angezeigten Terminal-Befehle sind explizit nur lesend; du kopierst sie in das lokale Ubuntu-Terminal und fügst die Ausgabe hier ein. Keine Fernsteuerung, kein Installationsskript, keine Änderung an der Kunden-SSD.</div>
