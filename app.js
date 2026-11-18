@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.2.5 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.2.6 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -52,6 +52,7 @@
   const OPENRGB11 = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND (1.1 AppImage in Downloads ablegen)'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  if chmod u+x \"$APP\"; then\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$APP\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$APP\" --list-devices 2>&1\n  else\n    echo 'OPENRGB11_STATUS: NOT_EXECUTABLE'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
   const OPENRGB11_FUSE_FREE = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  WORK=\"$(mktemp -d /tmp/gpu-openrgb11.XXXXXX)\"\n  if [ -z \"$WORK\" ] || [ ! -d \"$WORK\" ]; then\n    echo 'OPENRGB11_STATUS: TEMP_DIR_FAILED'\n  elif (cd \"$WORK\" && \"$APP\" --appimage-extract >/dev/null 2>&1 && test -x squashfs-root/AppRun); then\n    echo 'OPENRGB11_STATUS: EXTRACT_OK'\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$WORK/squashfs-root/AppRun\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$WORK/squashfs-root/AppRun\" --list-devices 2>&1\n    echo \"OPENRGB11_LIST_EXIT: $?\"\n  else\n    echo 'OPENRGB11_STATUS: EXTRACT_FAILED'\n    echo 'AppImage konnte nicht extrahiert werden. FUSE-Kompatibilitaets-Paket als Alternative verwenden.'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
   const OPENRGB_FUSE_PACKAGE = "sudo apt update && sudo apt install libfuse2t64";
+  const OPENRGB_FIX_OPENGL = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\necho 'OPENRGB11_FIX: libOpenGL.so.0 via libopengl0'\nif sudo apt install libopengl0; then\n  echo 'OPENRGB11_PACKAGE: INSTALLED_OR_PRESENT'\n  RUN=\"\"\n  for f in /tmp/gpu-openrgb11.*/squashfs-root/AppRun; do\n    if [ -x \"$f\" ]; then RUN=\"$f\"; break; fi\n  done\n  if [ -z \"$RUN\" ]; then\n    echo 'OPENRGB11_STATUS: EXTRACTED_DIR_NOT_FOUND'\n    echo 'Zuerst AppImage FUSE-frei entpacken (vorherigen Befehl auf der Seite).'\n  else\n    echo \"OPENRGB11_FILE: $RUN\"\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$RUN\" --version 2>&1\n    VR=$?\n    if [ \"$VR\" -ne 0 ]; then\n      echo 'OPENRGB11_STATUS: RUNTIME_ERROR'\n      echo \"OPENRGB11_VERSION_EXIT: $VR\"\n      echo '--- Fehlende Bibliotheken laut dynamischem Linker ---'\n      ldd \"$(dirname \"$RUN\")/usr/bin/OpenRGB\" 2>&1 | grep 'not found' || true\n    else\n      echo 'OPENRGB11_STATUS: DEPENDENCIES_OK'\n      echo '--- OPENRGB 1.1 DEVICES ---'\n      \"$RUN\" --list-devices 2>&1\n      echo \"OPENRGB11_LIST_EXIT: $?\"\n    fi\n  fi\nelse\n  echo 'OPENRGB11_STATUS: PACKAGE_INSTALL_FAILED'\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
@@ -64,6 +65,7 @@
     openrgb11: OPENRGB11,
     openrgb11FuseFree: OPENRGB11_FUSE_FREE,
     openrgbFusePackage: OPENRGB_FUSE_PACKAGE,
+    openrgbFixOpenGL: OPENRGB_FIX_OPENGL,
     nitroPy: "py .\\tools\\nitroglow_probe.py read",
     nitroExe: ".\\NitroGlowFix.exe --read"
   };
@@ -233,12 +235,13 @@
     const body=m[1];
     const file=body.match(/OPENRGB11_FILE:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
     const status=body.match(/OPENRGB11_STATUS:\s*([A-Z_]+)/i)?.[1]||"UNKNOWN";
-    const runtimeError=/libfuse\.so\.2|AppImages require FUSE|dlopen\(\): error loading libfuse/i.test(body);
+    const runtimeError=/libfuse\.so\.2|AppImages require FUSE|dlopen\(\): error loading libfuse|libOpenGL\.so\.0|error while loading shared libraries|cannot open shared object file/i.test(body);
     const lines=body.split(/\r?\n/).map(x=>x.trim());
     const devices=lines.filter(x=>/^\d+\s*:\s*\S/.test(x));
     const sapphire=devices.filter(x=>/\bsapphire\b|\bnitro\s*glow\b/i.test(x));
     const gpu=sapphire.length>0;
     const detectionStarted=/--- OPENRGB 1\.1 DEVICES ---/i.test(body);
+    const usableListing=detectionStarted&&!runtimeError&&/OPENRGB11_STATUS:\s*DEPENDENCIES_OK|OPENRGB11_STATUS:\s*EXTRACT_OK/i.test(body);
     const listExit=body.match(/OPENRGB11_LIST_EXIT:\s*(\d+)/i)?.[1];
     const result=[
       "AppImage: "+file,
@@ -253,15 +256,21 @@
       result.push("Die Datei liegt nicht im Ubuntu-Downloads-Ordner. Bitte den vorhandenen Download prüfen.");
     }else if(status==="EXTRACT_FAILED"||status==="TEMP_DIR_FAILED"){
       result.push("Das Entpacken ohne FUSE ist fehlgeschlagen. Die Seite bietet alternativ libfuse2t64 für die Ubuntu-Live-Sitzung an.");
+    }else if(status==="PACKAGE_INSTALL_FAILED"){
+      result.push("libopengl0 konnte nicht installiert werden. Bitte den Paketmanagerfehler zeigen; keine weiteren Pakete auf Verdacht installieren.");
+    }else if(status==="EXTRACTED_DIR_NOT_FOUND"){
+      result.push("Die zuvor entpackte AppImage-Datei liegt nicht mehr unter /tmp. Den FUSE-freien Extraktionsbefehl auf dieser Seite erneut ausführen.");
+    }else if(status==="RUNTIME_ERROR"){
+      result.push("OpenRGB 1.1 kann noch nicht starten. Bitte die ausgegebenen fehlenden Bibliotheken zeigen; kein GPU-Testergebnis.");
     }else if(runtimeError){
-      result.push("OpenRGB konnte wegen der fehlenden FUSE-2-Bibliothek nicht gestartet werden. Die Geräteerkennung wurde NICHT durchgeführt. Verwende den neuen FUSE-freien Befehl ganz oben auf dieser Seite.");
+      result.push("OpenRGB 1.1 konnte wegen fehlender Systembibliotheken nicht starten. Die Geräteerkennung wurde NICHT durchgeführt. Den neuen libOpenGL0-Reparaturbefehl ganz oben ausführen.");
     }else if(gpu){
       report="recognized";
       result.push("OpenRGB 1.1 listet die Sapphire als eigenes RGB-Gerät. Nächster Schritt wäre ein kontrollierter LED-Farbtest; das Listing allein bestätigt noch keine funktionierenden LEDs.");
-    }else if(detectionStarted&&devices.length){
+    }else if(usableListing&&devices.length){
       report="missing";
       result.push("OpenRGB 1.1 listet andere RGB-Geräte, aber keinen separaten Sapphire-Controller. Das ist KEIN Beweis für einen Hardwaredefekt, da die Software-Unterstützung unvollständig sein kann.");
-    }else if(detectionStarted){
+    }else if(usableListing){
       result.push("Geräteerkennung gestartet, aber keine brauchbare Geräteliste erfasst. Bitte die Fehlermeldungen zeigen, bevor ein Hardwareurteil gefällt wird.");
     }else{
       result.push("Noch kein verwertbarer OpenRGB-1.1-Test. Bitte den FUSE-freien Startversuch durchführen.");
