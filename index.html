@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090d15">
+  <meta name="description" content="Lokale, lesende RGB- und GPU-Diagnose für Sapphire NITRO+ RX 7900 XTX. Ohne Telemetrie.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>GPU Diagnose | Sapphire NITRO+ RX 7900 XTX</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#content">Zum Inhalt</a>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation">
+      <a class="brand" href="./" aria-label="GPU Diagnose Startseite"><span class="brand-mark">D<span class="brand-dot">.</span></span><span>DIAGNOSE<small>GPU / RGB LAB</small></span></a>
+      <div class="side-label">ARBEITSPLATZ</div>
+      <nav class="nav" aria-label="Bereiche">
+        <button type="button" class="nav-btn active" data-page="overview"><span class="nav-ico">◈</span> Übersicht</button>
+        <button type="button" class="nav-btn" data-page="windows"><span class="nav-ico">▣</span> Windows-Scan</button>
+        <button type="button" class="nav-btn" data-page="controller"><span class="nav-ico">⌁</span> RGB-Controller</button>
+        <button type="button" class="nav-btn" data-page="linux"><span class="nav-ico">⌘</span> Linux-Livetest</button>
+        <button type="button" class="nav-btn" data-page="report"><span class="nav-ico">≡</span> Ergebnisse</button>
+        <button type="button" class="nav-btn" data-page="sources"><span class="nav-ico">↗</span> Downloads & Quellen</button>
+      </nav>
+      <div class="side-progress"><div class="label-flex"><span>Diagnosefortschritt</span><strong id="progressText">0/6</strong></div><div class="progress-track"><span id="progressBar"></span></div><p>Deine Häkchen bleiben nur in diesem Browser gespeichert.</p></div>
+      <div class="side-bottom"><span class="indicator"></span> STATIC / LOCAL-FIRST <small>Kein Gerätezugriff durch die Webseite</small></div>
+    </aside>
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.0</span></div>
+      </header>
+      <main id="content">
+        <section class="page active" id="overview" aria-labelledby="overviewTitle">
+          <div class="eyebrow">DIAGNOSE-SITZUNG · 18.11.2026</div>
+          <h1 id="overviewTitle">Sapphire NITRO+ <span>RX 7900 XTX</span></h1>
+          <p class="lead">Eine zentrale Oberfläche für den Ausfall der GPU-LED-Leisten. Kopiere Tests direkt auf den Kunden-PC, lies Ergebnisse ein und exportiere einen nachvollziehbaren Prüfbericht.</p>
+          <div class="hero-banner"><div><div class="micro">AKTUELLER BEFUND</div><h2>RGB-Controller nicht erreichbar</h2><p>Unter Windows antworteten Registerabfragen mit <code>ret=-1</code>. Das ist <strong>kein Nachweis</strong>, dass die LED-Anzahl null ist – es ist ein fehlgeschlagener Lesezugriff.</p></div><span class="hero-code">I²C / ADL<br><b>RET -1</b></span></div>
+          <div class="metric-grid">
+            <div class="metric"><span>GRAFIKKARTE</span><strong>RX 7900 XTX</strong><small>PCI 1002:744C / Sapphire 1DA2:E471</small></div>
+            <div class="metric"><span>BOARD</span><strong>B650 EDGE WIFI</strong><small>MSI · 5V-ARGB-Header geprüft</small></div>
+            <div class="metric"><span>LETZTER LESETEST</span><strong class="amber">ret = -1</strong><small>Kein gültiger Registerwert</small></div>
+            <div class="metric"><span>BELEUCHTUNG</span><strong class="amber">Dunkel</strong><small>Manchmal gelber Blitz beim Ausschalten</small></div>
+          </div>
+          <div class="section-heading"><div><h2>Diagnosepfad</h2><p>Ein Test nach dem anderen – ohne neue Fehlerquellen zu erzeugen.</p></div><button type="button" class="btn ghost" id="clearProgress">Häkchen zurücksetzen</button></div>
+          <div class="task-list" id="taskList">
+            <label class="task"><input type="checkbox" data-task="hardware"><span><strong>Hardware & Symptom erfasst</strong><small>Gerätekennung, LED-Ausfall, gelber Blitz, bisherige Prüfungen</small></span><span class="task-num">01</span></label>
+            <label class="task"><input type="checkbox" data-task="win"><span><strong>Windows nur lesend erfassen</strong><small>GPU, Treiber, BIOS, Grafikadapter ohne Änderung auslesen</small></span><span class="task-num">02</span></label>
+            <label class="task"><input type="checkbox" data-task="nitro"><span><strong>Nitro-Controller lesen</strong><small>Nur <code>read</code> / <code>--read</code>, niemals ungeprüft schreiben</small></span><span class="task-num">03</span></label>
+            <label class="task"><input type="checkbox" data-task="msi"><span><strong>Externen 5V-ARGB-Weg prüfen</strong><small>JARGB_V2_2 funktioniert mit anderen Lüfter-LEDs</small></span><span class="task-num">04</span></label>
+            <label class="task"><input type="checkbox" data-task="linux"><span><strong>Optional: Linux Live-USB</strong><small>Betriebssystem unabhängig gegenprüfen</small></span><span class="task-num">05</span></label>
+            <label class="task"><input type="checkbox" data-task="report"><span><strong>Befunde dokumentieren</strong><small>Bericht lokal exportieren oder zur Auswertung kopieren</small></span><span class="task-num">06</span></label>
+          </div>
+          <div class="two-col">
+            <div class="panel"><div class="panel-kicker">SOFORT WEITER</div><h3>Windows-Diagnose starten</h3><p>Einmal kopieren, in PowerShell einfügen, Ergebnis hier einlesen. Kein Programm muss installiert werden.</p><button class="btn primary" type="button" data-goto="windows">Windows-Scan öffnen <span>→</span></button></div>
+            <div class="panel"><div class="panel-kicker">ZWEITER PRÜFWEG</div><h3>Ubuntu Live-USB</h3><p>Unabhängig von Windows starten. Kein BIOS-Update und keine Neuinstallation erforderlich.</p><button class="btn secondary" type="button" data-goto="linux">Linux-Anleitung öffnen <span>→</span></button></div>
+          </div>
+          <div class="notice"><strong>Technische Grenze:</strong> GitHub Pages kann aus Sicherheitsgründen weder die GPU direkt erkennen noch PowerShell, Treiber oder I²C automatisch ausführen. Diese Seite erstellt sichere Anleitungen und wertet eingefügte Ausgaben ausschließlich lokal aus.</div>
+        </section>
+        <section class="page" id="windows" aria-labelledby="windowsTitle">
+          <div class="eyebrow">SCHRITT 02 · NUR LESEND</div><h1 id="windowsTitle">Windows <span>Systemscan</span></h1><p class="lead">Windows 11: GPU, Mainboard, BIOS und Grafiktreiber in einem Durchlauf erfassen. Der Befehl liest nur Systeminformationen aus.</p>
+          <div class="step-line"><span>1</span><p><strong>PowerShell öffnen.</strong> Rechtsklick auf Start → Terminal oder PowerShell. Administratorrechte sind für diesen Scan normalerweise nicht erforderlich.</p></div>
+          <div class="step-line"><span>2</span><p><strong>Befehl kopieren.</strong> In PowerShell einfügen und Enter drücken. Es werden keine Dateien überschrieben oder Einstellungen geändert.</p></div>
+          <div class="code-panel"><div class="code-head"><strong>Windows Read-only Scan</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="windows" type="button">Befehl kopieren</button></div></div><pre id="windowsCode" tabindex="0"></pre></div>
+          <div class="step-line"><span>3</span><p><strong>Ausgabe einfügen.</strong> Den Block zwischen <code>GPU-DIAG-BEGIN</code> und <code>GPU-DIAG-END</code> kopieren und unten einfügen. Optional als <a href="./tools/windows-readonly.ps1" download>PS1-Quelldatei herunterladen</a>.</p></div>
+          <label class="field-label" for="windowsOutput">PowerShell-Ausgabe (nur lokal im Browser)</label><textarea id="windowsOutput" rows="9" placeholder="GPU-DIAG-BEGIN&#10;{ ... }&#10;GPU-DIAG-END"></textarea>
+          <div class="button-row"><button type="button" class="btn primary" id="parseWindows">Ergebnis auswerten</button><button type="button" class="btn ghost" id="clearWindows">Ausgabe löschen</button></div>
+          <div class="result-box" id="windowsResult" role="status" aria-live="polite">Noch keine Ausgabe eingelesen.</div>
+          <div class="notice">Datenschutz: Der Scan erfasst keine Seriennummern, Benutzernamen, Zugangsdaten oder Dateien. Vor dem Teilen fremder Diagnosen trotzdem immer die Ausgabe prüfen.</div>
+        </section>
+        <section class="page" id="controller" aria-labelledby="controllerTitle">
+          <div class="eyebrow">SCHRITT 03 · CONTROLLER / I²C</div><h1 id="controllerTitle">Nitro Glow <span>Controller</span></h1><p class="lead">Wir unterscheiden fehlende Kommunikation von einer tatsächlich ausgelesenen LED-Einstellung. Bisher: AMD-Adapter gefunden, alle Registerlesungen <code>ret=-1</code>.</p>
+          <div class="decision-grid"><div class="panel compact"><div class="panel-kicker">GÜLTIG</div><h3><span class="green">ret=0</span></h3><p>Register erfolgreich gelesen. Erst dann darf der gemeldete Wert interpretiert werden.</p></div><div class="panel compact"><div class="panel-kicker">FEHLGESCHLAGEN</div><h3><span class="amber">ret=-1</span></h3><p>Kein gültiger Messwert. <code>val=0x00</code> bedeutet in diesem Fall <strong>nicht</strong> „LEDs auf Null“.</p></div></div>
+          <div class="notice warn"><strong>Keine Reparatur auf Verdacht:</strong> Keine Register schreiben, keine GPU-Firmware flashen und keine unbekannte EXE doppelklicken. Drittanbieter-Software zuerst prüfen.</div>
+          <h2>Vorhandenes NitroGlowFix-Projekt</h2>
+          <p>Das bereits benutzte Community-Projekt wird <strong>nur verlinkt</strong>; seine Dateien werden hier nicht verändert oder als geprüfte Software ausgegeben.</p>
+          <div class="link-line"><a href="https://github.com/ahmetem/sapphire-nitroglow-fix" target="_blank" rel="noopener noreferrer">NitroGlowFix – Quellcode und README ↗</a><a href="https://github.com/ahmetem/sapphire-nitroglow-fix/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer">Projekt-ZIP ↗</a></div>
+          <h3>Python-Lesetest (wenn das Projekt bereits entpackt ist)</h3>
+          <div class="code-panel"><div class="code-head"><strong>Python – nur read</strong><button class="btn small" data-copy="nitroPy" type="button">Kopieren</button></div><pre id="nitroPyCode"></pre></div>
+          <h3>Alternative C#-EXE – nur --read</h3><div class="code-panel"><div class="code-head"><strong>Lokale EXE aus vorhandenem Quellcode</strong><button class="btn small" data-copy="nitroExe" type="button">Kopieren</button></div><pre id="nitroExeCode"></pre></div>
+          <label class="field-label" for="nitroOutput">Ergebnis des Controllers einfügen</label><textarea id="nitroOutput" rows="7" placeholder="ADL adapter: 5&#10;0x10 mode ret=-1 val=0x00&#10;0x27 led_count ret=-1 val=0x00&#10;0x3E bright ret=-1 val=0x00"></textarea>
+          <div class="button-row"><button class="btn primary" id="parseNitro" type="button">Registerantwort auswerten</button><button class="btn ghost" id="clearNitro" type="button">Löschen</button></div><div class="result-box" id="nitroResult" aria-live="polite">Noch keine neue Registerausgabe eingelesen.</div>
+          <h2>Externe RGB-Ansteuerung</h2><p>Für den Test ist das GPU-ARGB-Kabel bei ausgeschaltetem, stromlosem PC korrekt an einem <strong>5V-JARGB_V2</strong>-Header anzuschließen. In TriXX <strong>External Source</strong>, in MSI Mystic Light den physisch benutzten Header wählen. Niemals mit <strong>12V JRGB</strong> verbinden.</p>
+        </section>
+        <section class="page" id="linux" aria-labelledby="linuxTitle">
+          <div class="eyebrow">SCHRITT 05 · UNABHÄNGIGER GEGENCHECK</div><h1 id="linuxTitle">Linux <span>Live-Test</span></h1><p class="lead">Ubuntu lässt sich vom USB-3.0-Stick ausprobieren. So prüfen wir GPU-Erkennung und Linux-Treiber unabhängig von der vorhandenen Windows-Installation.</p>
+          <div class="notice">Wichtig: Linux kann ein Windows-Problem <strong>stützen</strong>, aber ein fehlender Controller unter Linux beweist keinen Defekt. RGB-Unterstützung und I²C-Zugriff sind je nach Kernel und Software unterschiedlich.</div>
+          <div class="panel"><div class="panel-kicker">VORBEREITUNG</div><h3>Live-USB erstellen</h3><ol class="instructions"><li><a href="https://ubuntu.com/download/desktop" rel="noopener noreferrer" target="_blank">Ubuntu Desktop (offizielle ISO)</a> herunterladen.</li><li><a href="https://rufus.ie/de/" rel="noopener noreferrer" target="_blank">Rufus (offiziell)</a> öffnen und den USB-Stick als Ziel auswählen. <strong>Der Stick wird gelöscht.</strong></li><li>ISO schreiben und am MSI-PC über <strong>F11</strong> den USB-Stick booten.</li><li><strong>Ubuntu ausprobieren</strong> auswählen, nicht installieren. Secure Boot nur nach Prüfung einer möglichen Windows-Geräteverschlüsselung ändern.</li></ol></div>
+          <h2>Hardware unter Linux nur auslesen</h2><p>Terminal öffnen (Strg + Alt + T), folgenden Block einfügen. Er prüft Kernel, PCI-Geräte und vorhandene I²C-Gerätedateien ohne Registerscan und ohne Änderungen.</p>
+          <div class="code-panel"><div class="code-head"><strong>Linux Read-only Scan</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="linux" type="button">Befehl kopieren</button></div></div><pre id="linuxCode"></pre></div>
+          <p>Alternativ ist der lesende Quelltext unter <a href="./tools/linux-readonly.sh" download>tools/linux-readonly.sh</a> verfügbar. Optional: <a href="https://openrgb.org/releases.html" target="_blank" rel="noopener noreferrer">OpenRGB Linux</a> – nur die unterstützte Geräteerkennung testen, keine experimentellen I²C-Busscans oder Writes.</p>
+          <label class="field-label" for="linuxOutput">Linux-Terminalausgabe</label><textarea id="linuxOutput" rows="8" placeholder="GPU-DIAG-LINUX-BEGIN&#10;...&#10;GPU-DIAG-LINUX-END"></textarea>
+          <div class="button-row"><button class="btn primary" id="parseLinux" type="button">Erkennung auswerten</button><button class="btn ghost" id="clearLinux" type="button">Löschen</button></div><div class="result-box" id="linuxResult" aria-live="polite">Noch kein Linux-Scan durchgeführt.</div>
+        </section>
+        <section class="page" id="report" aria-labelledby="reportTitle">
+          <div class="eyebrow">SCHRITT 06 · PROTOKOLL</div><h1 id="reportTitle">Diagnose <span>Ergebnisse</span></h1><p class="lead">Befunde zentral dokumentieren. Der Bericht wird in deinem Browser erstellt – keine Übertragung an einen Server.</p>
+          <div class="report-grid"><div><label class="field-label" for="osResult">Windows / TriXX</label><select id="osResult"><option value="off">LED bleibt dunkel</option><option value="working">LED reagiert wieder</option><option value="partial">LED reagiert teilweise</option><option value="untested">Noch nicht getestet</option></select></div><div><label class="field-label" for="externalResult">Mainboard 5V-ARGB</label><select id="externalResult"><option value="off">GPU bleibt dunkel</option><option value="working">Funktioniert</option><option value="untested">Noch nicht getestet</option></select></div><div><label class="field-label" for="bootFlash">Gelber Blitz beim Ausschalten</label><select id="bootFlash"><option value="sometimes">Manchmal, mit ARGB-Kabel</option><option value="always">Immer</option><option value="never">Nie</option><option value="unknown">Unbekannt</option></select></div><div><label class="field-label" for="linuxStatus">Linux-Test</label><select id="linuxStatus"><option value="notdone">Nicht durchgeführt</option><option value="dark">LED bleibt aus</option><option value="works">LED funktioniert</option><option value="unrecognized">Controller nicht erkannt</option></select></div></div>
+          <label class="field-label" for="notes">Eigene Notizen</label><textarea id="notes" rows="5" placeholder="Was wurde wann getestet? Änderungen, Kabel, Treiber ..."></textarea>
+          <div class="button-row"><button class="btn primary" id="makeReport" type="button">Bericht erstellen</button><button class="btn secondary" id="copyReport" type="button">Bericht kopieren</button><button class="btn secondary" id="downloadReport" type="button">TXT herunterladen</button><button class="btn ghost" id="downloadJson" type="button">JSON exportieren</button></div>
+          <label class="field-label" for="reportOutput">Generierter Bericht</label><textarea id="reportOutput" rows="17" readonly placeholder="Mit „Bericht erstellen“ eine Zusammenfassung erzeugen."></textarea>
+          <div class="notice">Für die Weitergabe hier im Chat: Bericht kopieren oder Screenshot des Resultats senden. Die Webseite übermittelt keine Ergebnisse automatisch an ChatGPT oder GitHub.</div>
+          <button class="btn danger" type="button" id="resetAll">Lokale Diagnosedaten löschen</button>
+        </section>
+        <section class="page" id="sources" aria-labelledby="sourcesTitle">
+          <div class="eyebrow">ORIGINALQUELLEN</div><h1 id="sourcesTitle">Downloads <span>& Quellen</span></h1><p class="lead">Nur offizielle Herstellerseiten und klar bezeichnete Open-Source-Projekte. Keine ungeprüften Drittanbieter-EXE-Dateien über dieses Dashboard.</p>
+          <div class="resource-grid">
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://www.sapphiretech.com/en/software"><span class="resource-mark">S</span><span><strong>Sapphire TriXX</strong><small>Offizielle Grafikkarten- und GLOW-Software</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://www.amd.com/en/support/downloads/drivers.html"><span class="resource-mark">A</span><span><strong>AMD Adrenalin</strong><small>Offizielle Grafiktreiber</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://www.amd.com/en/resources/support-articles/faqs/GPU-601.html"><span class="resource-mark">A</span><span><strong>AMD Cleanup Utility</strong><small>Nur bei geplantem Treibervergleich</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://www.msi.com/Motherboard/MPG-B650-EDGE-WIFI/support"><span class="resource-mark">M</span><span><strong>MSI B650 EDGE WIFI</strong><small>BIOS, Treiber und Handbuch</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://openrgb.org/releases.html"><span class="resource-mark">O</span><span><strong>OpenRGB</strong><small>Open-Source-RGB-Software</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://github.com/ahmetem/sapphire-nitroglow-fix"><span class="resource-mark">N</span><span><strong>NitroGlowFix</strong><small>Inoffizielles Community-Projekt, Quelle vor Ausführung prüfen</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://ubuntu.com/download/desktop"><span class="resource-mark">U</span><span><strong>Ubuntu Desktop</strong><small>Linux Live-USB ohne Installation</small></span><b>↗</b></a>
+            <a class="resource" target="_blank" rel="noopener noreferrer" href="https://rufus.ie/de/"><span class="resource-mark">R</span><span><strong>Rufus</strong><small>ISO auf USB schreiben (Stick wird gelöscht)</small></span><b>↗</b></a>
+          </div>
+          <div class="panel"><div class="panel-kicker">DIESE WEBSITE</div><h3>Quellcode & Grenzen</h3><p>Eine statische GitHub-Pages-Anwendung. Es gibt keinen Server, kein Tracking und keinen Upload. Diagnosebefehle laufen ausschließlich nach bewusstem Einfügen auf dem Kunden-PC. Keine automatische GPU-Steuerung über den Browser.</p><a href="https://github.com/DennoDhn/Diagnose" target="_blank" rel="noopener noreferrer">Projekt auf GitHub öffnen ↗</a></div>
+        </section>
+      </main>
+      <footer class="footer"><span>GPU DIAGNOSE · READ-ONLY FIRST</span><span>Kein Tracking · Daten lokal · Keine Fernsteuerung</span></footer>
+    </div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
