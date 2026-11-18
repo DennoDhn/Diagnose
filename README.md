@@ -17,7 +17,9 @@ Ohne Build-System; alle Dateien liegen direkt in main.
 - Lokale Analyse der ausgegebenen JSON-Daten.
 - Links zu Sapphire TriXX, AMD, MSI, OpenRGB und dem externen Community-Projekt NitroGlowFix.
 - Sicherer Lesemodus für NitroGlowFix und genaue Interpretation der Return-Codes.
-- Ubuntu Live-USB-Anleitung und lesender Linux-Hardware-Scan.
+- **Ubuntu Live Lab v1.1**: geführter F11-Boot, Try Ubuntu, zwei kopierbare Nur-Lese-Blöcke (PCI/DRM/amdgpu und I²C-Sysfs-Zuordnung), lokale TXT-/LOG-Dateiübernahme, visuelle GPU-/Kernel-/Bus-Statusanzeigen und Interpretation eines echten RGB-Farbtests.
+- Linux-Check für den Unterschied zwischen internem GPU-RGB-Controller und externer Mainboard-ARGB-Synchronisierung.
+- Detaillierte OpenRGB-Hinweise mit dokumentierter Einschränkung für Sapphire Nitro+ 7900 XTX.
 - Checkliste, lokale Notizen und TXT/JSON-Diagnosebericht.
 - Mobile-freundlich, ohne Tracking, ohne serverseitige Verarbeitung.
 
@@ -52,7 +54,21 @@ Der Browser sendet keine Daten an Server. Nicht vertrauliche Texte werden zur Wi
 - styles.css – Gestaltung
 - app.js – Navigation, Copy, lokale Auswertung und Export
 - tools/windows-readonly.ps1 – Windows-Hardwareinventar
-- tools/linux-readonly.sh – Linux-Read-only-Scan
+- tools/linux-readonly.sh – erweiterter Linux-Read-only-Scan (kein sudo, kein I²C-Scan)
 - .nojekyll – statische Veröffentlichung
 
 Alle Drittanbieter-Downloads verweisen auf die Originalhersteller beziehungsweise das jeweilige Open-Source-Projekt; keine Fremdsoftware wird in diesem Repository gebündelt.
+
+## Ubuntu-Livetest im Überblick
+
+1. USB über F11 booten, **Ubuntu ausprobieren** (nicht installieren).
+2. GitHub Pages im Ubuntu-Browser öffnen: https://dennodhn.github.io/Diagnose/#linux
+3. Terminal mit Strg+Alt+T öffnen; zuerst **Terminalblock 1** (GPU, Kernel, Treiber, DRM) kopieren/einfügen.
+4. Optional **Terminalblock 2** (I²C-Busnamen und Pfade) ausführen. Beide Blöcke lesen nur Systemmetadaten.
+5. Die Ausgabe in die Webseite einfügen oder eine lokale .txt/.log-Datei laden und auswerten.
+6. Separat die tatsächliche LED-Reaktion dokumentieren; bei angeschlossenem externen ARGB-Kabel kann das Ergebnis vom Mainboard stammen, nicht vom internen GPU-Controller.
+7. Bericht lokal exportieren. Live-USB-Umgebungen speichern Daten normalerweise nicht dauerhaft.
+
+**Keine** unkontrollierten I²C-Adressscans, i2cset/i2cdump, RGB-Registerschreibversuche, Firmware-Flashes oder Live-USB-Installationsschritte. Lesbare I²C-Geräteknoten belegen nicht automatisch einen ansprechbaren Sapphire-Nitro-Glow-Controller. Umgekehrt belegt fehlendes OpenRGB-Device keinen Controllerdefekt.
+
+Quellen zur Live-Nutzung: https://ubuntu.com/desktop/docs/en/26.04/tutorial/try-ubuntu-desktop/ sowie zum modellbezogenen OpenRGB-Problem https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396 .
