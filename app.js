@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.1 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.2 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -29,17 +29,32 @@
   ].join("\n");
   const LINUX = "set +e\necho 'GPU-DIAG-LINUX-BEGIN'\nprintf 'KERNEL: '; uname -r\nprintf 'OS: '; if [ -r /etc/os-release ]; then sed -n 's/^PRETTY_NAME=//p' /etc/os-release | head -n 1; else echo 'unknown'; fi\nprintf 'ARCH: '; uname -m\necho '--- GPU PCI ---'\nif command -v lspci >/dev/null 2>&1; then\n    lspci -Dnnk | grep -E -i -A 4 'VGA compatible controller|3D controller|Display controller'\nelse\n    echo 'lspci: not installed'\nfi\necho '--- DRM PCI IDs ---'\nfor d in /sys/class/drm/card[0-9]*/device; do\n    [ -d \"$d\" ] || continue\n    printf 'DRM_DEVICE: %s ' \"$d\"\n    for field in vendor device subsystem_vendor subsystem_device; do\n        if [ -r \"$d/$field\" ]; then printf '%s=%s ' \"$field\" \"$(cat \"$d/$field\")\"; fi\n    done\n    if [ -L \"$d/driver\" ]; then printf 'driver=%s ' \"$(basename \"$(readlink -f \"$d/driver\")\")\"; fi\n    echo\ndone\necho '--- KERNEL MODULES ---'\nif command -v lsmod >/dev/null 2>&1; then\n    lsmod | grep -E '^(amdgpu|i2c_dev|i2c_algo_bit|drm_)' || echo 'No matching loaded modules'\nelse\n    echo 'lsmod not available'\nfi\necho '--- I2C DEVICE NODES (existence only) ---'\nfound=0\nfor d in /dev/i2c-*; do\n    [ -e \"$d\" ] || continue\n    found=1\n    ls -l \"$d\"\ndone\n[ \"$found\" -eq 1 ] || echo 'No accessible /dev/i2c device nodes'\necho 'GPU-DIAG-LINUX-END'\n";
   const LINUX_DEEP = "# GPU DIAGNOSE – Linux I2C-Busübersicht: nur Dateisystem-Metadaten lesen\necho 'GPU-DIAG-I2C-BEGIN'\necho '--- I2C ADAPTER / NAME / SYSFS PARENT ---'\nn=0\nfor p in /sys/bus/i2c/devices/i2c-*/name; do\n  [ -r \"$p\" ] || continue\n  n=$((n+1))\n  printf 'I2C_BUS: %s | NAME: ' \"$(basename \"$(dirname \"$p\")\")\"\n  cat \"$p\"\n  printf 'PARENT: '\n  readlink -f \"$(dirname \"$p\")\"\ndone\n[ \"$n\" -gt 0 ] || echo 'No I2C bus metadata visible'\necho '--- GPU KERNEL DRIVER BINDING ---'\nfor d in /sys/class/drm/card[0-9]*/device; do\n  [ -d \"$d\" ] || continue\n  printf 'GPU_PCI_PATH: '\n  readlink -f \"$d\"\n  printf 'GPU_DRIVER: '\n  if [ -L \"$d/driver\" ]; then basename \"$(readlink -f \"$d/driver\")\"; else echo 'not bound'; fi\ndone\necho 'GPU-DIAG-I2C-END'\n";
+  const OPENRGB_CHECK = "command -v openrgb >/dev/null 2>&1 && openrgb --version || echo 'OpenRGB ist nicht installiert oder nicht startbar'";
+  const OPENRGB_INSTALL = "sudo apt update\nsudo apt install openrgb";
+  const OPENRGB_LIST = "echo 'GPU-DIAG-OPENRGB-BEGIN'\nopenrgb --list-devices 2>&1\necho 'GPU-DIAG-OPENRGB-END'";
+  const LINUX_ACCESS = [
+    "echo 'GPU-DIAG-ACCESS-BEGIN'",
+    "printf 'USER_GROUPS: '; id -nG",
+    "printf 'I2C_DEV_MODULE: '; if lsmod | grep -q '^i2c_dev '; then echo 'loaded'; else echo 'not loaded'; fi",
+    "echo '--- I2C NODES / OWNERS / PERMISSIONS ---'",
+    "ls -l /dev/i2c-* 2>&1 || true",
+    "echo 'GPU-DIAG-ACCESS-END'"
+  ].join("\n");
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
     linuxDeep: LINUX_DEEP,
+    openrgbCheck: OPENRGB_CHECK,
+    openrgbInstall: OPENRGB_INSTALL,
+    openrgbList: OPENRGB_LIST,
+    linuxAccess: LINUX_ACCESS,
     nitroPy: "py .\\tools\\nitroglow_probe.py read",
     nitroExe: ".\\NitroGlowFix.exe --read"
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["windowsOutput","nitroOutput","linuxOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
-  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null};
+  const tracked = ["windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null};
   let timer;
   function toast(msg) {
     const el=$("toast");el.textContent=msg;el.classList.add("show");
@@ -66,7 +81,7 @@
       const saved=JSON.parse(localStorage.getItem(key)||"null");
       if(saved&&typeof saved==="object"){
         state.tasks=saved.tasks||{};state.fields=saved.fields||{};
-        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;
+        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;
       }
     }catch(e){}
     tracked.forEach(id=>{if(state.fields[id]!==undefined)$(id).value=state.fields[id];});
@@ -176,6 +191,54 @@
     $("linuxFactI2c").textContent=i2cNodes||i2cBuses?"Sichtbar":"Nicht belegt";
     $("linuxFactComplete").textContent=base?(bus?"Beide Blöcke":"Basisblock"):"Unvollständig";
     persist();
+    updateKernelGate();
+  }
+  function kernelStatus(text){
+    const m=String(text||"").match(/^\s*KERNEL:\s*(\d+)\.(\d+)/im);
+    if(!m)return {supported:false,known:false,version:"?"};
+    const major=Number(m[1]),minor=Number(m[2]);
+    return {supported:major>6||(major===6&&minor>=15),known:true,version:major+"."+minor};
+  }
+  function updateKernelGate(){
+    const status=kernelStatus($("linuxOutput").value);
+    const el=$("linuxKernelGate");
+    if(!el)return;
+    el.classList.toggle("green",status.known&&status.supported);
+    el.classList.toggle("amber",status.known&&!status.supported);
+    el.textContent=!status.known?"Kernel noch nicht erfasst. Zuerst Basisprüfung auswerten.":
+      status.supported?"Kernel "+status.version+": grundsätzlich neu genug für die ab 6.15 erweiterte amdgpu-I²C-Unterstützung. Keine Garantie für RGB-Erkennung.":
+      "Kernel "+status.version+": vor 6.15. Fehlende GPU-I²C-Busse können hier am Kernel liegen.";
+  }
+  function parseOpenRgb(){
+    const text=$("openrgbOutput").value.trim();
+    if(!text){outcome($("openrgbResult"),"warn","Noch keine OpenRGB-Ausgabe eingefügt.");return;}
+    const section=text.match(/GPU-DIAG-OPENRGB-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-OPENRGB-END/i);
+    const body=section?section[1]:text;
+    const lines=body.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+    // Only numbered device list lines count as a positive RGB device detection.
+    const devices=lines.filter(x=>/^\d+\s*:\s*\S/.test(x));
+    const gpu=devices.filter(x=>/\bsapphire\b.*(\bnitro\b|\b7900\b|\bradeon\b)|\bnitro\s*glow\b/i.test(x));
+    const motherboard=devices.filter(x=>/MSI|B650|motherboard/i.test(x));
+    const errors=lines.filter(x=>/permission denied|failed to (read|access|initialize)|no such file|not found|command not found|error:/i.test(x));
+    const msgs=[
+      "OpenRGB aufgezählte Geräte: "+devices.length,
+      "Eigenständiger Sapphire/Nitro-Glow-Eintrag: "+(gpu.length?"JA":"NEIN / NICHT NACHGEWIESEN"),
+      "MSI-/Mainboard-Eintrag: "+(motherboard.length?"JA":"NEIN / NICHT NACHGEWIESEN")
+    ];
+    if(gpu.length)msgs.push("Sapphire-Gerät: "+gpu.join(" | "));
+    if(errors.length)msgs.push("Auffällige Meldungen (Auszug): "+errors.slice(0,3).join(" | "));
+    msgs.push("");
+    if(gpu.length)msgs.push("Der Controller wurde von OpenRGB als Gerät gelistet. Ein tatsächlicher RGB-Farbwechsel ist noch separat zu prüfen. Erst ein erfolgreicher Farbwechsel bestätigt den Steuerweg.");
+    else if(errors.length)msgs.push("OpenRGB meldet mögliche Zugriffs-/Startprobleme. Linux-Unterstützung und I²C-Berechtigungen prüfen, bevor Hardware defekt genannt wird.");
+    else if(motherboard.length)msgs.push("Nur Mainboard-RGB erkannt. Das bedeutet NICHT, dass die GPU-RGB-Steuerung funktioniert. Fehlender GPU-Eintrag ist noch kein Hardwaredefekt-Beweis.");
+    else msgs.push("Keine eindeutige GPU-Controller-Erkennung. OpenRGB-Version, Kernel und Zugriffsrechte weiter prüfen.");
+    state.lastOpenRgb={at:new Date().toISOString(),gpu:!!gpu.length,motherboard:!!motherboard.length,errors:errors.length,devices:devices.length};
+    if(gpu.length){$("linuxOpenRgb").value="detected";}
+    else if(errors.length){$("linuxOpenRgb").value="error";}
+    else {$("linuxOpenRgb").value="missing";}
+    state.fields.linuxOpenRgb=$("linuxOpenRgb").value;
+    outcome($("openrgbResult"),gpu.length?"good":"warn",msgs.join("\n"));
+    persist();
   }
   function assessLinux(){
     const c=$("linuxCable").value,boot=$("linuxBootLed").value,rgb=$("linuxRgbControl").value,orb=$("linuxOpenRgb").value;
@@ -227,6 +290,7 @@
       "Linux LED beim Booten: "+v("linuxBootLed"),
       "Linux OpenRGB: "+v("linuxOpenRgb"),
       "Linux tatsächliche Steuerung: "+v("linuxRgbControl"),
+      "OpenRGB eigenständige Sapphire-Erkennung: "+(state.lastOpenRgb?(state.lastOpenRgb.gpu?"JA":"NEIN"):"nicht geprüft"),
       "",
       "REGISTERAUSLESUNG",
       ctrlLines,
@@ -276,7 +340,13 @@
   $("parseWindows").addEventListener("click",parseWindows);
   $("parseNitro").addEventListener("click",parseNitro);
   $("parseLinux").addEventListener("click",parseLinux);
-  $("assessLinux").addEventListener("click",assessLinux);
+  $("parseOpenRgb").addEventListener("click",parseOpenRgb);
+  $("clearOpenRgb").addEventListener("click",()=>{
+    $("openrgbOutput").value="";state.fields.openrgbOutput="";
+    state.lastOpenRgb=null;persist();outcome($("openrgbResult"),"","Ausgabe gelöscht.");
+  });
+  $("linuxOutput").addEventListener("input",updateKernelGate);
+    $("assessLinux").addEventListener("click",assessLinux);
   $("linuxToReport").addEventListener("click",()=>page("report"));
   $("importLinuxLabel").addEventListener("click",()=>$("linuxFile").click());
   $("linuxFile").addEventListener("change",async e=>{
@@ -297,6 +367,6 @@
     if(!confirm("Alle lokalen Diagnoseergebnisse, Notizen und Häkchen in diesem Browser löschen?"))return;
     localStorage.removeItem(key);location.reload();
   });
-  hydrate();renderPast();page(decodeURIComponent(location.hash.slice(1))||"overview");
+  hydrate();renderPast();updateKernelGate();page(decodeURIComponent(location.hash.slice(1))||"overview");
   window.addEventListener("hashchange",()=>page(location.hash.slice(1)));
 })();
