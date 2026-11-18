@@ -63,7 +63,7 @@
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxAccessOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const tracked = ["linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
   const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null,lastLinuxOpenTest:null};
   let timer;
   function toast(msg) {
@@ -244,40 +244,6 @@
     outcome($("linuxOpenTestResult"),ok?"good":"warn",message);
     persist();
   }
-  function parseLinuxAccess(){
-    const raw=$("linuxAccessOutput").value.trim();
-    if(!raw){outcome($("linuxAccessResult"),"warn","Noch keine Ausgabe eingefügt.");return;}
-    const match=raw.match(/GPU-DIAG-ACCESS-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-ACCESS-END/i);
-    if(!match){outcome($("linuxAccessResult"),"warn","Unvollständiger Test: Bitte die Ausgabe einschließlich BEGIN und END einfügen.");return;}
-    const t=match[1];
-    const version=t.match(/OPENRGB_VERSION:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
-    const kernel=t.match(/KERNEL:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
-    const access=t.match(/I2C_READ_9:\s*(yes|no)/i)?.[1]?.toLowerCase();
-    const exists=/^I2C_BUS_9:\s*c[r-][w-]/im.test(t);
-    const mods=/I2C_DEV_MODULE:\s*(loaded|not_loaded)/i.exec(t)?.[1]||"unbekannt";
-    const groups=t.match(/USER_GROUPS:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
-    const lines=[
-      "OpenRGB-Version: "+version,
-      "Kernel: "+kernel,
-      "Benutzergruppen: "+groups,
-      "i2c-dev-Modul: "+mods,
-      "GPU-OEM-Bus /dev/i2c-9: "+(exists?"vorhanden":"nicht nachgewiesen"),
-      "Effektives Leserecht auf /dev/i2c-9: "+(access==="yes"?"JA":access==="no"?"NEIN":"nicht ermittelt"),
-      ""
-    ];
-    if(access==="no"){
-      lines.push("WICHTIGER BEFUND: Dein normaler Ubuntu-Benutzer darf den Sapphire-OEM-Bus nicht lesen. Fehlende OpenRGB-Erkennung kann daher auf Berechtigungen beruhen. KEIN Hardwaredefekt-Nachweis.");
-      lines.push("Als nächsten Schritt prüfen wir gezielt die offiziellen OpenRGB-Geräteregeln; die Seite startet ausdrücklich noch keinen Root-Hardware-Scan.");
-    }else if(access==="yes"){
-      lines.push("Der GPU-OEM-Bus ist für deinen Benutzer grundsätzlich lesbar. Fehlende Sapphire-Erkennung kann an OpenRGB-Version, Treiber-/Buszuordnung oder dem RGB-Controller liegen.");
-      lines.push("Dateisystem-Zugriffsrecht allein beweist noch keinen erfolgreichen I²C-Transfer.");
-    }else{
-      lines.push("Der Buszugriff ist noch nicht geklärt. Prüfe bitte, ob /dev/i2c-9 weiterhin existiert und die vollständige Ausgabe vorliegt.");
-    }
-    state.lastLinuxAccess={at:new Date().toISOString(),version,kernel,groups,i2c9Present:exists,i2c9Readable:access==="yes",i2c9AccessKnown:!!access,mod:mods};
-    outcome($("linuxAccessResult"),access==="yes"?"good":"warn",lines.join("\n"));
-    persist();
-  }
   function parseOpenRgb(){
     const text=$("openrgbOutput").value.trim();
     if(!text){outcome($("openrgbResult"),"warn","Noch keine OpenRGB-Ausgabe eingefügt.");return;}
@@ -418,11 +384,6 @@
   $("clearLinuxOpenTest").addEventListener("click",()=>{
     $("linuxOpenTestOutput").value="";state.fields.linuxOpenTestOutput="";
     state.lastLinuxOpenTest=null;persist();outcome($("linuxOpenTestResult"),"","Ausgabe gelöscht.");
-  });
-  $("parseLinuxAccess").addEventListener("click",parseLinuxAccess);
-  $("clearLinuxAccess").addEventListener("click",()=>{
-    $("linuxAccessOutput").value="";state.fields.linuxAccessOutput="";state.lastLinuxAccess=null;
-    persist();outcome($("linuxAccessResult"),"","Ausgabe gelöscht.");
   });
   $("parseOpenRgb").addEventListener("click",parseOpenRgb);
   $("clearOpenRgb").addEventListener("click",()=>{
