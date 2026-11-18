@@ -87,3 +87,7 @@ Am Linux-Kernel 6.15 wurden AMD-GPU-I²C-Schnittstellen verbessert (kein garanti
 Alle Hardwarezugriffe durch OpenRGB werden explizit als optional markiert. Das bloße Listing kann Geräte sondieren; es ist nicht gleichzusetzen mit den nur lesenden Systembefehlen. Die Ubuntu-Paketinstallation per apt ist optional und verändert nur die laufende Live-Umgebung, sofern es sich um ein nicht-persistentes Live-System handelt. Es werden keine generischen I²C-Schreibbefehle bereitgestellt.
 
 Quellen: https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396 · https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/1046 · https://packages.ubuntu.com/resolute/amd64/openrgb · https://openrgb.org/releases.html .
+
+## Zwischenbefund Ubuntu Live-Test (18.11.2026)
+
+Nach dem Ubuntu-Live-USB-Start: Radeon RX 7900 XTX PCI 1002:744C erkannt; amdgpu gebunden; GPU-I²C-Adapter i2c-3 bis i2c-11 inkl. OEM-Bus i2c-9 sichtbar. OpenRGB list-devices erkennt zwei Corsair-Dominator-RAM-Geräte und das MSI MPG B650 EDGE WIFI, **nicht** die Sapphire. Mehrfache Meldung `[i2c_smbus_linux] Failed to read i2c device PCI device ID`. Der gleiche Fehler ist für die Karte bereits im OpenRGB-Issue https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396 dokumentiert. Noch **kein** Beweis für einen defekten Sapphire-Controller. V1.2.2 zeigt daher oben einen *nur lesenden* Test für OpenRGB-Version und tatsächliche Dateisystem-Berechtigungen auf dem GPU-OEM-Bus `/dev/i2c-9`. Keine automatische Root-Ausführung.
