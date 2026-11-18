@@ -59,16 +59,31 @@ Der Browser sendet keine Daten an Server. Nicht vertrauliche Texte werden zur Wi
 
 Alle Drittanbieter-Downloads verweisen auf die Originalhersteller beziehungsweise das jeweilige Open-Source-Projekt; keine Fremdsoftware wird in diesem Repository gebündelt.
 
-## Ubuntu-Livetest im Überblick
+## Ubuntu-Livetest V1.2 im Überblick
 
 1. USB über F11 booten, **Ubuntu ausprobieren** (nicht installieren).
 2. GitHub Pages im Ubuntu-Browser öffnen: https://dennodhn.github.io/Diagnose/#linux
 3. Terminal mit Strg+Alt+T öffnen; zuerst **Terminalblock 1** (GPU, Kernel, Treiber, DRM) kopieren/einfügen.
 4. Optional **Terminalblock 2** (I²C-Busnamen und Pfade) ausführen. Beide Blöcke lesen nur Systemmetadaten.
 5. Die Ausgabe in die Webseite einfügen oder eine lokale .txt/.log-Datei laden und auswerten.
-6. Separat die tatsächliche LED-Reaktion dokumentieren; bei angeschlossenem externen ARGB-Kabel kann das Ergebnis vom Mainboard stammen, nicht vom internen GPU-Controller.
-7. Bericht lokal exportieren. Live-USB-Umgebungen speichern Daten normalerweise nicht dauerhaft.
+6. Unter **04B / OpenRGB** die Kernel-Eignung (6.15+) bewerten, prüfen ob OpenRGB installiert ist, bei Bedarf das offizielle Ubuntu-Paket in der Live-Sitzung installieren, und `openrgb --list-devices` zur kontrollierten Geräteerkennung verwenden.
+7. OpenRGB-Geräteliste einfügen. Der Parser zählt nur die separate Sapphire-/Nitro-Glow-Erkennung, nicht bloß das MSI-Mainboard. Bei Fehlermeldungen zu I²C die lesende Gruppen-/Rechte-/Modulprüfung verwenden.
+8. Separat die tatsächliche LED-Reaktion dokumentieren; bei angeschlossenem externen ARGB-Kabel kann das Ergebnis vom Mainboard stammen, nicht vom internen GPU-Controller.
+9. Bericht lokal exportieren. Live-USB-Umgebungen speichern Daten normalerweise nicht dauerhaft.
 
 **Keine** unkontrollierten I²C-Adressscans, i2cset/i2cdump, RGB-Registerschreibversuche, Firmware-Flashes oder Live-USB-Installationsschritte. Lesbare I²C-Geräteknoten belegen nicht automatisch einen ansprechbaren Sapphire-Nitro-Glow-Controller. Umgekehrt belegt fehlendes OpenRGB-Device keinen Controllerdefekt.
 
 Quellen zur Live-Nutzung: https://ubuntu.com/desktop/docs/en/26.04/tutorial/try-ubuntu-desktop/ sowie zum modellbezogenen OpenRGB-Problem https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396 .
+
+### Warum die neue OpenRGB-Stufe wichtig ist
+
+Am Linux-Kernel 6.15 wurden AMD-GPU-I²C-Schnittstellen verbessert (kein garantierter RGB-Fix). Für die NITRO+ RX 7900 XTX sind von OpenRGB Probleme bei der Erkennung dokumentiert. Deshalb trennt die Oberfläche zwischen:
+
+- PCI-Erkennung der Radeon (Grafiktreiber funktioniert),
+- amdgpu-Modul und bereitgestellten /dev/i2c-Bussen (Grundvoraussetzung),
+- tatsächlichem Eintrag als Sapphire Nitro-Glow-Gerät in OpenRGB,
+- beobachtetem Farbwechsel an der GPU ohne externes ARGB-Kabel (starker Funktionsnachweis).
+
+Alle Hardwarezugriffe durch OpenRGB werden explizit als optional markiert. Das bloße Listing kann Geräte sondieren; es ist nicht gleichzusetzen mit den nur lesenden Systembefehlen. Die Ubuntu-Paketinstallation per apt ist optional und verändert nur die laufende Live-Umgebung, sofern es sich um ein nicht-persistentes Live-System handelt. Es werden keine generischen I²C-Schreibbefehle bereitgestellt.
+
+Quellen: https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/3396 · https://gitlab.com/CalcProgrammer1/OpenRGB/-/issues/1046 · https://packages.ubuntu.com/resolute/amd64/openrgb · https://openrgb.org/releases.html .
