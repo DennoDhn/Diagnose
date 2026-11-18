@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.2.7</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.3.0</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -91,9 +91,41 @@
 
 
 
+          <div class="linux-feature" id="linuxLastDeepTest" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
+            <div class="micro">NÄCHSTER SCHRITT · NITRO-GLOW / BOOT / BIOS</div>
+            <h2>Warum leuchtet die Sapphire nicht beim Einschalten?</h2>
+            <p><strong>Wichtiger Unterschied:</strong> Viele Lüfter und RAM-Module verwenden eigene Beleuchtungscontroller mit gespeicherten Standardmodi. Das sagt nichts darüber aus, ob die Sapphire zwingend beim Start leuchten muss. Ein zuvor gespeicherter „Off“- oder „External Source“-Modus kann auch nach Neustarts relevant bleiben.</p>
+            <div class="notice"><strong>TriXX unter Linux:</strong> Sapphire stellt für diese Karte keine native Linux-Version von TriXX bereit. Wine ist für TriXX' direkte AMD-Treiber-/I²C-Anbindung kein zuverlässiger Gegencheck. Wir versuchen deshalb <strong>nicht</strong>, TriXX unter Linux zu emulieren. Das richtige Linux-Werkzeug bleibt OpenRGB; eine Karte kann damit grundsätzlich funktionieren, auch wenn die automatische Erkennung bei diesem Modell scheitert.</div>
+            <div class="section-heading"><div><h2>A / OpenRGB: detaillierte Controller-Erkennung</h2><p>Einmal die Protokollierung aktivieren. Das zeigt, welche I²C-Adapter OpenRGB überhaupt der Sapphire zuordnet.</p></div><span class="tag">DIAGNOSE</span></div>
+            <p>Der Befehl nutzt die schon funktionierende, entpackte OpenRGB-1.1-Version in <code>/tmp</code>. <strong>Keine Installation und keine eigenen I²C-Registerbefehle.</strong> Wie bei der bisherigen Geräteliste kann OpenRGB bei seiner normalen Erkennung Hardware abfragen.</p>
+            <div class="code-panel"><div class="code-head"><strong>OpenRGB 1.1 · ausführliches Geräteprotokoll</strong><button class="btn primary" type="button" data-copy="openrgbDetailed">Befehl kopieren</button></div><pre id="openrgbDetailedCode" tabindex="0"></pre></div>
+            <label class="field-label" for="openrgbDetailedOutput">Ergebnis einfügen oder Foto schicken</label>
+            <textarea id="openrgbDetailedOutput" rows="8" placeholder="GPU-DIAG-OPENRGB-VERBOSE-BEGIN&#10;... Device 1002:744C Subsystem 1DA2:E471 ...&#10;...&#10;GPU-DIAG-OPENRGB-VERBOSE-END"></textarea>
+            <div class="button-row"><button class="btn primary" type="button" id="parseOpenrgbDetailed">Protokoll auswerten</button><button class="btn ghost" type="button" id="clearOpenrgbDetailed">Löschen</button></div>
+            <div id="openrgbDetailedResult" class="result-box" aria-live="polite">Noch kein erweitertes OpenRGB-1.1-Protokoll eingelesen.</div>
+            <div class="section-heading"><div><h2>B / Kontrollierter Kaltstart ohne ARGB-Kabel</h2><p>Wenn auch der ausführliche Scan den Controller nicht erreicht, prüfen wir den gespeicherten Zustand ohne Windows und ohne Mainboard-RGB-Signal.</p></div></div>
+            <div class="wizard-list">
+              <div class="wizard-step"><span class="wizard-num">1</span><div><strong>PC vollständig herunterfahren und stromlos machen</strong><p>PC ausschalten, Netzteil ausschalten, Netzstecker ziehen. Ein-/Ausschalttaste des PCs einige Sekunden drücken. Den bisherigen Kurztest haben wir bereits durchgeführt – hier geht es um eine <strong>längere stromlose Unterbrechung</strong>.</p></div></div>
+              <div class="wizard-step"><span class="wizard-num">2</span><div><strong>Externes Sapphire-ARGB-Kabel von der GPU entfernen</strong><p>Ausschließlich bei stromlosem PC. Das lose Kabelende sicher ablegen, sodass es keine Kontakte berührt. Die Grafikkarte selbst bleibt im PCIe-Steckplatz. So kann kein Mainboard-ARGB-Signal die interne Steuerung überlagern.</p></div></div>
+              <div class="wizard-step"><span class="wizard-num">3</span><div><strong>Mindestens 20 Minuten stromlos lassen</strong><p>Danach normal einschalten und ohne weitere Softwareänderungen beobachten, ob die GPU vor dem Start des Betriebssystems irgendeine Beleuchtung zeigt. Ein solcher verlängerter Kaltstart hat bei einzelnen Sapphire-Nutzern geholfen – <strong>kein offiziell bestätigter RGB-Controller-Reset und keine Erfolgsgarantie</strong>.</p></div></div>
+              <div class="wizard-step"><span class="wizard-num">4</span><div><strong>Danach Windows/TriXX nur für die interne Steuerung</strong><p>Wenn weiterhin dunkel: Im bereits installierten Sapphire TriXX ohne externes ARGB-Kabel <strong>Glow → Restore Defaults</strong> und einen internen Modus wie Rainbow mit voller Helligkeit prüfen. Wurde schon früher erfolglos getestet – diesmal nur nach längerem stromlosem Zustand.</p></div></div>
+            </div>
+            <div class="report-grid">
+              <div><label class="field-label" for="coldBootLed">Sapphire beim Einschalten ohne ARGB-Kabel</label><select id="coldBootLed"><option value="pending">Noch nicht getestet</option><option value="on">LED leuchtet wieder</option><option value="flash">Nur kurzer Blitz</option><option value="off">LED bleibt dunkel</option></select></div>
+              <div><label class="field-label" for="postColdTriXX">TriXX nach dem Kaltstart</label><select id="postColdTriXX"><option value="pending">Noch nicht getestet</option><option value="works">Interner LED-Modus funktioniert</option><option value="noeffect">TriXX steuert weiterhin nicht</option></select></div>
+            </div>
+            <div class="button-row"><button class="btn secondary" id="assessColdBoot" type="button">Kaltstart-Ergebnis bewerten</button><button class="btn ghost" type="button" data-goto="report">Prüfbericht</button></div>
+            <div class="result-box" id="coldBootResult" aria-live="polite">Der verlängerte stromlose Start wurde noch nicht dokumentiert.</div>
+            <div class="notice warn"><strong>Nicht mit einem Reset verwechseln:</strong> Ein MSI-CMOS-Reset oder Mainboard-BIOS-Update setzt den separaten Sapphire-RGB-Controller nicht nachweislich zurück. Der Mainboard-Schalter LED_SW1 betrifft die Mainboard-LEDs; da diese funktionieren, ist er kein plausibler Grund für den Ausfall der internen Nitro-Glow-Beleuchtung. GPU-BIOS-Schalter, unbekannte Firmware-Tools und EEPROM-Registerschreibversuche bleiben unangetastet.</div>
+            <div class="link-line">
+              <a href="https://www.sapphiretech.com/de-de/software" target="_blank" rel="noopener noreferrer">Offizielle Sapphire TriXX-Software ↗</a>
+              <a href="https://gitlab.com/CalcProgrammer1/OpenRGB/-/work_items/4817" target="_blank" rel="noopener noreferrer">OpenRGB: RX 7900 XTX unter Linux steuerbar ↗</a>
+              <a href="https://rog-forum.asus.com/t5/armoury-crate/armoury-crate-brick-locked-sapphire-7900-xt-nitro-rgb-mcu-need/m-p/1146799/highlight/true" target="_blank" rel="noopener noreferrer">Erfahrungsbericht zum längeren Kaltstart ↗</a>
+            </div>
+          </div>
           <div class="linux-feature" id="hardwareNextStep" style="margin-top:16px;border-color:rgba(200,255,40,.5)">
-            <div class="micro">AKTUELLER NÄCHSTER SCHRITT · SOFTWARETEST ABGESCHLOSSEN</div>
-            <h2>Jetzt: Sapphire-ARGB-Kabel und GPU-Anschluss prüfen</h2>
+            <div class="micro">OPTIONAL DANACH · KABEL UND ANSCHLUSS</div>
+            <h2>Alternative: Sapphire-ARGB-Kabel und GPU-Anschluss prüfen</h2>
             <p><strong>Linux-Befund:</strong> Ubuntu erkennt die Radeon und ihren AMD-Treiber, GPU-I²C-Busse sind vorhanden und <code>/dev/i2c-9</code> lässt sich öffnen. <strong>OpenRGB 1.1 startet erfolgreich (Exit 0)</strong>, listet 2× Corsair-RAM und das MSI-Mainboard, aber <strong>keinen Sapphire-Nitro-Glow-Controller</strong>. Ein fehlender Eintrag ist kein Hardwaredefekt-Nachweis. Die be quiet!-Lüfter müssen bei Mainboard-ARGB-Verkabelung nicht einzeln erscheinen.</p>
             <div class="notice"><strong>Bereits erledigt – nicht erneut testen:</strong> TriXX interne LED-Modi, externe ARGB-Steuerung über einen funktionierenden MSI-5V-Header, OpenRGB 0.9+ und 1.1 sowie Linux-I²C-Tests. <strong>Offen ist insbesondere die Prüfung des Sapphire-ARGB-Verbindungskabels und des Kartenanschlusses.</strong></div>
             <div class="wizard-list">
