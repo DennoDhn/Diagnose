@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.3.0 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.3.1 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -526,6 +526,19 @@
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>page(b.dataset.goto)));
   $$("[data-task]").forEach(b=>b.addEventListener("change",e=>{state.tasks[e.target.dataset.task]=e.target.checked;persist();progress();}));
   tracked.forEach(id=>$(id).addEventListener("input",storeField));
+  $("importOpenrgbDetailed").addEventListener("click",()=>$("openrgbDetailedFile").click());
+  $("openrgbDetailedFile").addEventListener("change",async e=>{
+    const file=e.target.files?.[0];if(!file)return;
+    if(file.size>1024*1024){toast("Maximal 1 MB je Diagnoseprotokoll");e.target.value="";return;}
+    try{
+      const value=await file.text();
+      $("openrgbDetailedOutput").value=value;
+      state.fields.openrgbDetailedOutput=value;
+      persist();toast("OpenRGB-Protokoll lokal geladen");
+      parseOpenrgbDetailed();
+    }catch(err){toast("Protokoll konnte nicht eingelesen werden");}
+    e.target.value="";
+  });
   $("parseOpenrgbDetailed").addEventListener("click",parseOpenrgbDetailed);
   $("clearOpenrgbDetailed").addEventListener("click",()=>{
     $("openrgbDetailedOutput").value="";state.fields.openrgbDetailedOutput="";state.lastOpenrgbDetailed=null;
