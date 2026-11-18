@@ -226,7 +226,7 @@
     const version=t.match(/OPENRGB_VERSION:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
     const kernel=t.match(/KERNEL:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
     const access=t.match(/I2C_READ_9:\s*(yes|no)/i)?.[1]?.toLowerCase();
-    const exists=/I2C_BUS_9:\s*(?!not_present)/i.test(t);
+    const exists=/^I2C_BUS_9:\s*c[r-][w-]/im.test(t);
     const mods=/I2C_DEV_MODULE:\s*(loaded|not_loaded)/i.exec(t)?.[1]||"unbekannt";
     const groups=t.match(/USER_GROUPS:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
     const lines=[
