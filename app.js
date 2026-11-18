@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.2.4 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.2.5 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -50,6 +50,8 @@
   ].join("\n");
   const LINUX_OPEN_TEST = "echo 'GPU-DIAG-I2C-OPEN-BEGIN'\nid\nstat -c 'I2C9_MODE: %A %a %U:%G %n' /dev/i2c-9 2>&1\npython3 - <<'PY'\nimport os\np = '/dev/i2c-9'\ntry:\n    fd = os.open(p, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0))\nexcept OSError as e:\n    print('I2C9_OPEN: FAIL (' + str(e.errno) + ': ' + str(e.strerror) + ')')\nelse:\n    os.close(fd)\n    print('I2C9_OPEN: SUCCESS (opened read-only; no I2C transfer)')\nPY\necho 'GPU-DIAG-I2C-OPEN-END'";
   const OPENRGB11 = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND (1.1 AppImage in Downloads ablegen)'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  if chmod u+x \"$APP\"; then\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$APP\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$APP\" --list-devices 2>&1\n  else\n    echo 'OPENRGB11_STATUS: NOT_EXECUTABLE'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
+  const OPENRGB11_FUSE_FREE = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  WORK=\"$(mktemp -d /tmp/gpu-openrgb11.XXXXXX)\"\n  if [ -z \"$WORK\" ] || [ ! -d \"$WORK\" ]; then\n    echo 'OPENRGB11_STATUS: TEMP_DIR_FAILED'\n  elif (cd \"$WORK\" && \"$APP\" --appimage-extract >/dev/null 2>&1 && test -x squashfs-root/AppRun); then\n    echo 'OPENRGB11_STATUS: EXTRACT_OK'\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$WORK/squashfs-root/AppRun\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$WORK/squashfs-root/AppRun\" --list-devices 2>&1\n    echo \"OPENRGB11_LIST_EXIT: $?\"\n  else\n    echo 'OPENRGB11_STATUS: EXTRACT_FAILED'\n    echo 'AppImage konnte nicht extrahiert werden. FUSE-Kompatibilitaets-Paket als Alternative verwenden.'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
+  const OPENRGB_FUSE_PACKAGE = "sudo apt update && sudo apt install libfuse2t64";
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
@@ -60,6 +62,8 @@
     linuxAccess: LINUX_ACCESS,
     linuxOpenTest: LINUX_OPEN_TEST,
     openrgb11: OPENRGB11,
+    openrgb11FuseFree: OPENRGB11_FUSE_FREE,
+    openrgbFusePackage: OPENRGB_FUSE_PACKAGE,
     nitroPy: "py .\\tools\\nitroglow_probe.py read",
     nitroExe: ".\\NitroGlowFix.exe --read"
   };
@@ -227,26 +231,44 @@
     const m=raw.match(/GPU-DIAG-OPENRGB11-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-OPENRGB11-END/i);
     if(!m){outcome($("openrgb11Result"),"warn","Unvollständige Ausgabe: BEGIN und END fehlen.");return;}
     const body=m[1];
-    const file=body.match(/OPENRGB11_FILE:\s*([^\r\n]+)/i)?.[1]||"nicht gefunden";
-    const missing=/OPENRGB11_STATUS:\s*FILE_NOT_FOUND/i.test(body);
-    const execIssue=/OPENRGB11_STATUS:\s*NOT_EXECUTABLE|fuse:|libfuse|cannot execute|AppImage.*(error|failed)/i.test(body);
+    const file=body.match(/OPENRGB11_FILE:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
+    const status=body.match(/OPENRGB11_STATUS:\s*([A-Z_]+)/i)?.[1]||"UNKNOWN";
+    const runtimeError=/libfuse\.so\.2|AppImages require FUSE|dlopen\(\): error loading libfuse/i.test(body);
     const lines=body.split(/\r?\n/).map(x=>x.trim());
     const devices=lines.filter(x=>/^\d+\s*:\s*\S/.test(x));
     const sapphire=devices.filter(x=>/\bsapphire\b|\bnitro\s*glow\b/i.test(x));
     const gpu=sapphire.length>0;
+    const detectionStarted=/--- OPENRGB 1\.1 DEVICES ---/i.test(body);
+    const listExit=body.match(/OPENRGB11_LIST_EXIT:\s*(\d+)/i)?.[1];
     const result=[
-      "Ausgewähltes AppImage: "+file,
-      "OpenRGB-Geräte insgesamt: "+devices.length,
-      "Eigener Sapphire-/Nitro-Glow-Eintrag: "+(gpu?"JA":"NICHT GEFUNDEN"),
+      "AppImage: "+file,
+      "Entpack-Status: "+status,
+      "OpenRGB-1.1-Geräteliste: "+(detectionStarted?"gestartet":"nicht bestätigt"),
+      "Gefundene RGB-Geräte: "+devices.length,
+      "Eigenständiger Sapphire-/Nitro-Glow-Eintrag: "+(gpu?"JA":"NICHT GEFUNDEN"),
       ""
     ];
-    if(missing)result.push("OpenRGB 1.1 AppImage nicht im Downloads-Ordner gefunden. Über den Downloadlink auf dieser Seite herunterladen.");
-    else if(execIssue)result.push("AppImage konnte möglicherweise nicht gestartet werden. Bitte die vollständige Fehlermeldung fotografieren, statt andere Treiber zu installieren.");
-    else if(gpu)result.push("Die neue OpenRGB-Version erkennt den Sapphire-RGB-Controller. Nächster Schritt: bewusster, kontrollierter Farbwechseltest; reine Erkennung beweist noch keine funktionierende LED.");
-    else if(devices.length)result.push("Auch mit Version 1.1 wird die Sapphire nicht separat erkannt. Das belegt weiterhin KEINEN Controllerdefekt; Unterstützung oder Controllerkommunikation können fehlen.");
-    else result.push("Keine gültige Geräteauflistung erkennbar. Bitte zuerst Startausgabe prüfen.");
-    state.lastOpenRgb11={at:new Date().toISOString(),file,devices:devices.length,sapphire:gpu,missing,execIssue};
-    if(!missing&&!execIssue){
+    let report="not-tested";
+    if(status==="FILE_NOT_FOUND"){
+      result.push("Die Datei liegt nicht im Ubuntu-Downloads-Ordner. Bitte den vorhandenen Download prüfen.");
+    }else if(status==="EXTRACT_FAILED"||status==="TEMP_DIR_FAILED"){
+      result.push("Das Entpacken ohne FUSE ist fehlgeschlagen. Die Seite bietet alternativ libfuse2t64 für die Ubuntu-Live-Sitzung an.");
+    }else if(runtimeError){
+      result.push("OpenRGB konnte wegen der fehlenden FUSE-2-Bibliothek nicht gestartet werden. Die Geräteerkennung wurde NICHT durchgeführt. Verwende den neuen FUSE-freien Befehl ganz oben auf dieser Seite.");
+    }else if(gpu){
+      report="recognized";
+      result.push("OpenRGB 1.1 listet die Sapphire als eigenes RGB-Gerät. Nächster Schritt wäre ein kontrollierter LED-Farbtest; das Listing allein bestätigt noch keine funktionierenden LEDs.");
+    }else if(detectionStarted&&devices.length){
+      report="missing";
+      result.push("OpenRGB 1.1 listet andere RGB-Geräte, aber keinen separaten Sapphire-Controller. Das ist KEIN Beweis für einen Hardwaredefekt, da die Software-Unterstützung unvollständig sein kann.");
+    }else if(detectionStarted){
+      result.push("Geräteerkennung gestartet, aber keine brauchbare Geräteliste erfasst. Bitte die Fehlermeldungen zeigen, bevor ein Hardwareurteil gefällt wird.");
+    }else{
+      result.push("Noch kein verwertbarer OpenRGB-1.1-Test. Bitte den FUSE-freien Startversuch durchführen.");
+    }
+    if(listExit!==undefined)result.push("OpenRGB-Exitcode: "+listExit);
+    state.lastOpenRgb11={at:new Date().toISOString(),file,devices:devices.length,sapphire:gpu,status,report,runtimeError};
+    if(report!=="not-tested"){
       $("linuxOpenRgb").value=gpu?"detected":"missing";
       state.fields.linuxOpenRgb=$("linuxOpenRgb").value;
     }
