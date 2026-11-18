@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.2.3 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.2.4 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -49,6 +49,7 @@
     "echo 'GPU-DIAG-ACCESS-END'"
   ].join("\n");
   const LINUX_OPEN_TEST = "echo 'GPU-DIAG-I2C-OPEN-BEGIN'\nid\nstat -c 'I2C9_MODE: %A %a %U:%G %n' /dev/i2c-9 2>&1\npython3 - <<'PY'\nimport os\np = '/dev/i2c-9'\ntry:\n    fd = os.open(p, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0))\nexcept OSError as e:\n    print('I2C9_OPEN: FAIL (' + str(e.errno) + ': ' + str(e.strerror) + ')')\nelse:\n    os.close(fd)\n    print('I2C9_OPEN: SUCCESS (opened read-only; no I2C transfer)')\nPY\necho 'GPU-DIAG-I2C-OPEN-END'";
+  const OPENRGB11 = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND (1.1 AppImage in Downloads ablegen)'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  if chmod u+x \"$APP\"; then\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$APP\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$APP\" --list-devices 2>&1\n  else\n    echo 'OPENRGB11_STATUS: NOT_EXECUTABLE'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
@@ -58,13 +59,14 @@
     openrgbList: OPENRGB_LIST,
     linuxAccess: LINUX_ACCESS,
     linuxOpenTest: LINUX_OPEN_TEST,
+    openrgb11: OPENRGB11,
     nitroPy: "py .\\tools\\nitroglow_probe.py read",
     nitroExe: ".\\NitroGlowFix.exe --read"
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
-  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null,lastLinuxOpenTest:null};
+  const tracked = ["openrgb11Output","linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null,lastLinuxOpenTest:null,lastOpenRgb11:null};
   let timer;
   function toast(msg) {
     const el=$("toast");el.textContent=msg;el.classList.add("show");
@@ -91,7 +93,7 @@
       const saved=JSON.parse(localStorage.getItem(key)||"null");
       if(saved&&typeof saved==="object"){
         state.tasks=saved.tasks||{};state.fields=saved.fields||{};
-        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;state.lastLinuxAccess=saved.lastLinuxAccess||null;state.lastLinuxOpenTest=saved.lastLinuxOpenTest||null;
+        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;state.lastLinuxAccess=saved.lastLinuxAccess||null;state.lastLinuxOpenTest=saved.lastLinuxOpenTest||null;state.lastOpenRgb11=saved.lastOpenRgb11||null;
       }
     }catch(e){}
     tracked.forEach(id=>{if(state.fields[id]!==undefined)$(id).value=state.fields[id];});
@@ -219,6 +221,38 @@
       status.supported?"Kernel "+status.version+": grundsätzlich neu genug für die ab 6.15 erweiterte amdgpu-I²C-Unterstützung. Keine Garantie für RGB-Erkennung.":
       "Kernel "+status.version+": vor 6.15. Fehlende GPU-I²C-Busse können hier am Kernel liegen.";
   }
+  function parseOpenRgb11(){
+    const raw=$("openrgb11Output").value.trim();
+    if(!raw){outcome($("openrgb11Result"),"warn","Noch keine Ausgabe eingefügt.");return;}
+    const m=raw.match(/GPU-DIAG-OPENRGB11-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-OPENRGB11-END/i);
+    if(!m){outcome($("openrgb11Result"),"warn","Unvollständige Ausgabe: BEGIN und END fehlen.");return;}
+    const body=m[1];
+    const file=body.match(/OPENRGB11_FILE:\s*([^\r\n]+)/i)?.[1]||"nicht gefunden";
+    const missing=/OPENRGB11_STATUS:\s*FILE_NOT_FOUND/i.test(body);
+    const execIssue=/OPENRGB11_STATUS:\s*NOT_EXECUTABLE|fuse:|libfuse|cannot execute|AppImage.*(error|failed)/i.test(body);
+    const lines=body.split(/\r?\n/).map(x=>x.trim());
+    const devices=lines.filter(x=>/^\d+\s*:\s*\S/.test(x));
+    const sapphire=devices.filter(x=>/\bsapphire\b|\bnitro\s*glow\b/i.test(x));
+    const gpu=sapphire.length>0;
+    const result=[
+      "Ausgewähltes AppImage: "+file,
+      "OpenRGB-Geräte insgesamt: "+devices.length,
+      "Eigener Sapphire-/Nitro-Glow-Eintrag: "+(gpu?"JA":"NICHT GEFUNDEN"),
+      ""
+    ];
+    if(missing)result.push("OpenRGB 1.1 AppImage nicht im Downloads-Ordner gefunden. Über den Downloadlink auf dieser Seite herunterladen.");
+    else if(execIssue)result.push("AppImage konnte möglicherweise nicht gestartet werden. Bitte die vollständige Fehlermeldung fotografieren, statt andere Treiber zu installieren.");
+    else if(gpu)result.push("Die neue OpenRGB-Version erkennt den Sapphire-RGB-Controller. Nächster Schritt: bewusster, kontrollierter Farbwechseltest; reine Erkennung beweist noch keine funktionierende LED.");
+    else if(devices.length)result.push("Auch mit Version 1.1 wird die Sapphire nicht separat erkannt. Das belegt weiterhin KEINEN Controllerdefekt; Unterstützung oder Controllerkommunikation können fehlen.");
+    else result.push("Keine gültige Geräteauflistung erkennbar. Bitte zuerst Startausgabe prüfen.");
+    state.lastOpenRgb11={at:new Date().toISOString(),file,devices:devices.length,sapphire:gpu,missing,execIssue};
+    if(!missing&&!execIssue){
+      $("linuxOpenRgb").value=gpu?"detected":"missing";
+      state.fields.linuxOpenRgb=$("linuxOpenRgb").value;
+    }
+    outcome($("openrgb11Result"),gpu?"good":"warn",result.join("\n"));
+    persist();
+  }
   function parseLinuxOpenTest(){
     const raw=$("linuxOpenTestOutput").value.trim();
     if(!raw){outcome($("linuxOpenTestResult"),"warn","Noch keine Ausgabe eingefügt.");return;}
@@ -327,6 +361,7 @@
       "Linux OpenRGB: "+v("linuxOpenRgb"),
       "Linux tatsächliche Steuerung: "+v("linuxRgbControl"),
       "OpenRGB eigenständige Sapphire-Erkennung: "+(state.lastOpenRgb?(state.lastOpenRgb.gpu?"JA":"NEIN"):"nicht geprüft"),
+      "OpenRGB 1.1 Vergleich: "+(state.lastOpenRgb11?(state.lastOpenRgb11.sapphire?"Sapphire erkannt":"Sapphire nicht erkannt / Startproblem"):"nicht durchgeführt"),
       "Linux GPU-OEM-Bus i2c-9 lesbar: "+(state.lastLinuxAccess?.i2c9AccessKnown?(state.lastLinuxAccess.i2c9Readable?"JA":"NEIN"):"nicht geprüft"),
       "Linux GPU-OEM-Bus i2c-9 Open-only: "+(state.lastLinuxOpenTest?state.lastLinuxOpenTest.result:"noch nicht getestet"),
       "Linux OpenRGB-Version: "+(state.lastLinuxAccess?.version||"unbekannt"),
@@ -380,6 +415,11 @@
   $("parseWindows").addEventListener("click",parseWindows);
   $("parseNitro").addEventListener("click",parseNitro);
   $("parseLinux").addEventListener("click",parseLinux);
+  $("parseOpenRgb11").addEventListener("click",parseOpenRgb11);
+  $("clearOpenRgb11").addEventListener("click",()=>{
+    $("openrgb11Output").value="";state.fields.openrgb11Output="";state.lastOpenRgb11=null;
+    persist();outcome($("openrgb11Result"),"","Ausgabe gelöscht.");
+  });
   $("parseLinuxOpenTest").addEventListener("click",parseLinuxOpenTest);
   $("clearLinuxOpenTest").addEventListener("click",()=>{
     $("linuxOpenTestOutput").value="";state.fields.linuxOpenTestOutput="";
