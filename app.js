@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.3.2 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.3.3 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
