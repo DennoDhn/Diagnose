@@ -13,7 +13,7 @@ else
     echo 'lspci: not installed'
 fi
 echo '--- DRM PCI IDs ---'
-for d in /sys/class/drm/card[0-9]*/device; do
+for d in /sys/class/drm/card[0-9]/device /sys/class/drm/card[0-9][0-9]/device; do
     [ -d "$d" ] || continue
     printf 'DRM_DEVICE: %s ' "$d"
     for field in vendor device subsystem_vendor subsystem_device; do
@@ -35,5 +35,5 @@ for d in /dev/i2c-*; do
     found=1
     ls -l "$d"
 done
-[ "$found" -eq 1 ] || echo 'No accessible /dev/i2c device nodes'
+[ "$found" -eq 1 ] || echo 'No /dev/i2c device nodes found'
 echo 'GPU-DIAG-LINUX-END'
