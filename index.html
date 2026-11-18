@@ -30,7 +30,7 @@
     <div class="main-wrap">
       <header class="topbar">
         <div class="crumb">WORKBENCH <span>/</span> <strong id="sectionName">ÜBERSICHT</strong></div>
-        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.1</span></div>
+        <div class="top-actions"><span class="tag muted">KEIN CLOUD-UPLOAD</span><span class="tag version">V1.2</span></div>
       </header>
       <main id="content">
         <section class="page active" id="overview" aria-labelledby="overviewTitle">
@@ -125,6 +125,35 @@
             <div class="linux-fact"><small>Live-Ausgabe</small><strong id="linuxFactComplete">–</strong></div>
           </div>
 
+
+          <div class="section-heading"><div><h2>04B / OpenRGB wirklich gegenprüfen</h2><p>Hier prüfen wir den Sapphire-Controller gezielter – nicht nur die GPU-Erkennung durch Linux.</p></div><span class="tag">OPTIONAL · GERÄTEABFRAGE</span></div>
+          <div class="decision-grid">
+            <div class="panel compact"><div class="panel-kicker">ANFORDERUNG 1</div><h3>Linux-Kernel</h3><p>Für neuere AMD-GPU-I²C-Schnittstellen ist ein aktueller Kernel entscheidend. Ab 6.15 wurde Unterstützung ergänzt; das garantiert aber keine Erkennung durch OpenRGB.</p><p id="linuxKernelGate" class="kernel-gate">Kernelstatus aus der Basisdiagnose auslesen.</p></div>
+            <div class="panel compact"><div class="panel-kicker">ANFORDERUNG 2</div><h3>Softwarezugriff</h3><p>Das OpenRGB-Gerät <strong>„Sapphire Nitro Glow“</strong> muss separat in der Geräteliste stehen. Ein Eintrag für das MSI-Mainboard allein genügt nicht.</p></div>
+          </div>
+          <h3>Schritt A – Ist OpenRGB vorhanden?</h3>
+          <div class="code-panel"><div class="code-head"><strong>Nur Installation prüfen</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="openrgbCheck" type="button">Kopieren</button></div></div><pre id="openrgbCheckCode"></pre></div>
+          <details class="optional-details"><summary>OpenRGB fehlt? Offiziellen Ubuntu-Paketweg anzeigen</summary><p>Ubuntu 26.04 bietet OpenRGB im Repository <strong>universe</strong> an. Eine Installation mit apt verändert die temporäre Live-Sitzung, nicht automatisch die Windows-SSD. Dafür wird eine Internetverbindung benötigt.</p>
+            <div class="code-panel"><div class="code-head"><strong>Optional – Installation mit apt</strong><button class="btn small" data-copy="openrgbInstall" type="button">Kopieren</button></div><pre id="openrgbInstallCode"></pre></div>
+            <p>Installiere ausschließlich, wenn Ubuntu vollständig im Live-Modus läuft. Wenn <code>openrgb</code> nicht angeboten wird, nicht wahllos fremde Paketquellen hinzufügen. Alternativ <a href="https://openrgb.org/releases.html" target="_blank" rel="noopener noreferrer">offizielle OpenRGB-Releases</a> verwenden.</p>
+          </details>
+          <h3>Schritt B – Nur Geräte aufzählen</h3>
+          <p class="support-text">Dieser Befehl startet die normale OpenRGB-Geräteerkennung. Anders als der erste Shell-Scan kann OpenRGB dabei Hardware-Schnittstellen ansprechen. Nur ausführen, wenn du den Test bewusst möchtest; keine experimentellen Scans, automatische Profile oder Farbänderungen.</p>
+          <div class="code-panel"><div class="code-head"><strong>OpenRGB-Geräteübersicht</strong><button class="btn small" data-copy="openrgbList" type="button">Kopieren</button></div><pre id="openrgbListCode"></pre></div>
+          <label class="field-label" for="openrgbOutput">OpenRGB-Ausgabe einfügen</label>
+          <textarea id="openrgbOutput" rows="8" placeholder="GPU-DIAG-OPENRGB-BEGIN&#10;OpenRGB ...&#10;0: MSI MPG B650 EDGE WIFI&#10;1: Sapphire Radeon RX 7900 XTX Nitro+&#10;GPU-DIAG-OPENRGB-END"></textarea>
+          <div class="button-row"><button class="btn primary" id="parseOpenRgb" type="button">Geräteerkennung auswerten</button><button class="btn ghost" id="clearOpenRgb" type="button">Ausgabe löschen</button></div>
+          <div class="result-box" id="openrgbResult" aria-live="polite">Noch keine OpenRGB-Geräteliste erfasst.</div>
+          <details class="optional-details"><summary>Falls OpenRGB „keine I²C-Berechtigung“ meldet</summary>
+            <p>Dieser Prüfblock zeigt den aktuell angemeldeten Benutzer, seine Gruppen, den Kernel-Modulstatus und die Zugriffsrechte der vorhandenen I²C-Gerätedateien. Er verändert <strong>keine</strong> Zugriffsrechte und lädt keine Kernelmodule nach.</p>
+            <div class="code-panel"><div class="code-head"><strong>I²C-Berechtigungen prüfen</strong><div><span class="tag safe">READ ONLY</span><button class="btn small" data-copy="linuxAccess" type="button">Kopieren</button></div></div><pre id="linuxAccessCode"></pre></div>
+            <p>Ausgaben kannst du zusammen mit dem Basis-Scan auf der Seite einfügen. Rechte nicht pauschal mit <code>chmod 777</code> verändern. Bei Bedarf greifen wir später kontrolliert auf offizielle OpenRGB-udev-Regeln zurück.</p>
+            <a href="https://openrgb.org/udev" target="_blank" rel="noopener noreferrer">Offizielle OpenRGB-udev-Dokumentation ↗</a>
+          </details>
+          <div class="linux-clue">
+            <strong>Entscheidender Vergleich</strong>
+            <p><b>GPU wird als RGB-Gerät erkannt und Farbwechsel funktioniert:</b> Hardwareweg funktioniert grundsätzlich. <b>GPU wird nicht erkannt:</b> Ursache kann trotzdem die Linux-Unterstützung, I²C-Freigabe oder der RGB-Controller sein. <b>GPU wird erkannt, Farbe bleibt aus:</b> Kommandoannahme und LED-Ansteuerung weiter untersuchen.</p>
+          </div>
           <div class="section-heading"><div><h2>05 / Beobachtung und RGB-Test</h2><p>Ergebnisse ausdrücklich getrennt von der reinen GPU-Erkennung erfassen.</p></div></div>
           <div class="notice"><strong>Beachte die Kabelkonfiguration:</strong> Wenn die GPU noch mit MSI JARGB_V2 verbunden ist, kann eine mögliche Beleuchtung vom Mainboard kommen. Für einen <em>internen</em> Sapphire-Controller-Test muss das externe ARGB-Kabel bei <strong>ausgeschaltetem, stromlosem PC</strong> abgetrennt und der lose Stecker isoliert sein. Im laufenden Betrieb nichts umstecken.</div>
           <div class="report-grid">
