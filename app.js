@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.2 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.2.2 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -34,10 +34,18 @@
   const OPENRGB_LIST = "echo 'GPU-DIAG-OPENRGB-BEGIN'\nopenrgb --list-devices 2>&1\necho 'GPU-DIAG-OPENRGB-END'";
   const LINUX_ACCESS = [
     "echo 'GPU-DIAG-ACCESS-BEGIN'",
+    "printf 'OPENRGB_VERSION: '; openrgb --version 2>&1 | head -n 4",
+    "printf 'KERNEL: '; uname -r",
     "printf 'USER_GROUPS: '; id -nG",
-    "printf 'I2C_DEV_MODULE: '; if lsmod | grep -q '^i2c_dev '; then echo 'loaded'; else echo 'not loaded'; fi",
-    "echo '--- I2C NODES / OWNERS / PERMISSIONS ---'",
-    "ls -l /dev/i2c-* 2>&1 || true",
+    "printf 'I2C_DEV_MODULE: '; if lsmod | grep -q '^i2c_dev '; then echo loaded; else echo not_loaded; fi",
+    "for n in 9 3 4 0; do",
+    "  p=/dev/i2c-$n",
+    "  if [ -e \"$p\" ]; then",
+    "    printf 'I2C_BUS_%s: ' \"$n\"; stat -c '%A %U:%G %n' \"$p\"",
+    "    if [ -r \"$p\" ]; then echo \"I2C_READ_$n: yes\"; else echo \"I2C_READ_$n: no\"; fi",
+    "    if [ -w \"$p\" ]; then echo \"I2C_WRITE_PERMISSION_$n: yes\"; else echo \"I2C_WRITE_PERMISSION_$n: no\"; fi",
+    "  else echo \"I2C_BUS_$n: not_present\"; fi",
+    "done",
     "echo 'GPU-DIAG-ACCESS-END'"
   ].join("\n");
   const cmds = {
@@ -53,8 +61,8 @@
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
-  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null};
+  const tracked = ["windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxAccessOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null};
   let timer;
   function toast(msg) {
     const el=$("toast");el.textContent=msg;el.classList.add("show");
@@ -81,7 +89,7 @@
       const saved=JSON.parse(localStorage.getItem(key)||"null");
       if(saved&&typeof saved==="object"){
         state.tasks=saved.tasks||{};state.fields=saved.fields||{};
-        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;
+        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;state.lastLinuxAccess=saved.lastLinuxAccess||null;
       }
     }catch(e){}
     tracked.forEach(id=>{if(state.fields[id]!==undefined)$(id).value=state.fields[id];});
@@ -209,6 +217,40 @@
       status.supported?"Kernel "+status.version+": grundsätzlich neu genug für die ab 6.15 erweiterte amdgpu-I²C-Unterstützung. Keine Garantie für RGB-Erkennung.":
       "Kernel "+status.version+": vor 6.15. Fehlende GPU-I²C-Busse können hier am Kernel liegen.";
   }
+  function parseLinuxAccess(){
+    const raw=$("linuxAccessOutput").value.trim();
+    if(!raw){outcome($("linuxAccessResult"),"warn","Noch keine Ausgabe eingefügt.");return;}
+    const match=raw.match(/GPU-DIAG-ACCESS-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-ACCESS-END/i);
+    if(!match){outcome($("linuxAccessResult"),"warn","Unvollständiger Test: Bitte die Ausgabe einschließlich BEGIN und END einfügen.");return;}
+    const t=match[1];
+    const version=t.match(/OPENRGB_VERSION:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
+    const kernel=t.match(/KERNEL:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
+    const access=t.match(/I2C_READ_9:\s*(yes|no)/i)?.[1]?.toLowerCase();
+    const exists=/I2C_BUS_9:\s*(?!not_present)/i.test(t);
+    const mods=/I2C_DEV_MODULE:\s*(loaded|not_loaded)/i.exec(t)?.[1]||"unbekannt";
+    const groups=t.match(/USER_GROUPS:\s*([^\r\n]+)/i)?.[1]||"nicht erkannt";
+    const lines=[
+      "OpenRGB-Version: "+version,
+      "Kernel: "+kernel,
+      "Benutzergruppen: "+groups,
+      "i2c-dev-Modul: "+mods,
+      "GPU-OEM-Bus /dev/i2c-9: "+(exists?"vorhanden":"nicht nachgewiesen"),
+      "Effektives Leserecht auf /dev/i2c-9: "+(access==="yes"?"JA":access==="no"?"NEIN":"nicht ermittelt"),
+      ""
+    ];
+    if(access==="no"){
+      lines.push("WICHTIGER BEFUND: Dein normaler Ubuntu-Benutzer darf den Sapphire-OEM-Bus nicht lesen. Fehlende OpenRGB-Erkennung kann daher auf Berechtigungen beruhen. KEIN Hardwaredefekt-Nachweis.");
+      lines.push("Als nächsten Schritt prüfen wir gezielt die offiziellen OpenRGB-Geräteregeln; die Seite startet ausdrücklich noch keinen Root-Hardware-Scan.");
+    }else if(access==="yes"){
+      lines.push("Der GPU-OEM-Bus ist für deinen Benutzer grundsätzlich lesbar. Fehlende Sapphire-Erkennung kann an OpenRGB-Version, Treiber-/Buszuordnung oder dem RGB-Controller liegen.");
+      lines.push("Dateisystem-Zugriffsrecht allein beweist noch keinen erfolgreichen I²C-Transfer.");
+    }else{
+      lines.push("Der Buszugriff ist noch nicht geklärt. Prüfe bitte, ob /dev/i2c-9 weiterhin existiert und die vollständige Ausgabe vorliegt.");
+    }
+    state.lastLinuxAccess={at:new Date().toISOString(),version,kernel,groups,i2c9Present:exists,i2c9Readable:access==="yes",i2c9AccessKnown:!!access,mod:mods};
+    outcome($("linuxAccessResult"),access==="yes"?"good":"warn",lines.join("\n"));
+    persist();
+  }
   function parseOpenRgb(){
     const text=$("openrgbOutput").value.trim();
     if(!text){outcome($("openrgbResult"),"warn","Noch keine OpenRGB-Ausgabe eingefügt.");return;}
@@ -229,11 +271,12 @@
     if(errors.length)msgs.push("Auffällige Meldungen (Auszug): "+errors.slice(0,3).join(" | "));
     msgs.push("");
     if(gpu.length)msgs.push("Der Controller wurde von OpenRGB als Gerät gelistet. Ein tatsächlicher RGB-Farbwechsel ist noch separat zu prüfen. Erst ein erfolgreicher Farbwechsel bestätigt den Steuerweg.");
-    else if(errors.length)msgs.push("OpenRGB meldet mögliche Zugriffs-/Startprobleme. Linux-Unterstützung und I²C-Berechtigungen prüfen, bevor Hardware defekt genannt wird.");
+    else if(errors.length)msgs.push("Sapphire wurde nicht gelistet, und OpenRGB meldet mögliche Zugriffs-/Identifikationsfehler. Das bekannte Sapphire-Modellproblem und die I²C-Berechtigungen prüfen – kein Hardwaredefekt-Nachweis.");
     else if(motherboard.length)msgs.push("Nur Mainboard-RGB erkannt. Das bedeutet NICHT, dass die GPU-RGB-Steuerung funktioniert. Fehlender GPU-Eintrag ist noch kein Hardwaredefekt-Beweis.");
     else msgs.push("Keine eindeutige GPU-Controller-Erkennung. OpenRGB-Version, Kernel und Zugriffsrechte weiter prüfen.");
     state.lastOpenRgb={at:new Date().toISOString(),gpu:!!gpu.length,motherboard:!!motherboard.length,errors:errors.length,devices:devices.length};
     if(gpu.length){$("linuxOpenRgb").value="detected";}
+    else if(devices.length){$("linuxOpenRgb").value="missing";}
     else if(errors.length){$("linuxOpenRgb").value="error";}
     else {$("linuxOpenRgb").value="missing";}
     state.fields.linuxOpenRgb=$("linuxOpenRgb").value;
@@ -291,6 +334,8 @@
       "Linux OpenRGB: "+v("linuxOpenRgb"),
       "Linux tatsächliche Steuerung: "+v("linuxRgbControl"),
       "OpenRGB eigenständige Sapphire-Erkennung: "+(state.lastOpenRgb?(state.lastOpenRgb.gpu?"JA":"NEIN"):"nicht geprüft"),
+      "Linux GPU-OEM-Bus i2c-9 lesbar: "+(state.lastLinuxAccess?.i2c9AccessKnown?(state.lastLinuxAccess.i2c9Readable?"JA":"NEIN"):"nicht geprüft"),
+      "Linux OpenRGB-Version: "+(state.lastLinuxAccess?.version||"unbekannt"),
       "",
       "REGISTERAUSLESUNG",
       ctrlLines,
@@ -329,6 +374,7 @@
     if(state.lastNitro)outcome($("nitroResult"),state.lastNitro.ok?"good":"warn","Vorheriges Registerergebnis lokal gespeichert. Für Details erneut auswerten.");
     if(state.lastLinux)outcome($("linuxResult"),state.lastLinux.ok?"good":"warn","Vorheriger Linux-Scan lokal gespeichert. Für Details erneut auswerten.");
   }
+  $("linuxNextCode").textContent=LINUX_ACCESS;
   Object.entries(cmds).forEach(([id,command])=>{
     const el=$(id+"Code");if(el)el.textContent=command;
   });
@@ -340,6 +386,11 @@
   $("parseWindows").addEventListener("click",parseWindows);
   $("parseNitro").addEventListener("click",parseNitro);
   $("parseLinux").addEventListener("click",parseLinux);
+  $("parseLinuxAccess").addEventListener("click",parseLinuxAccess);
+  $("clearLinuxAccess").addEventListener("click",()=>{
+    $("linuxAccessOutput").value="";state.fields.linuxAccessOutput="";state.lastLinuxAccess=null;
+    persist();outcome($("linuxAccessResult"),"","Ausgabe gelöscht.");
+  });
   $("parseOpenRgb").addEventListener("click",parseOpenRgb);
   $("clearOpenRgb").addEventListener("click",()=>{
     $("openrgbOutput").value="";state.fields.openrgbOutput="";
