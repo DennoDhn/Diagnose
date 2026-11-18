@@ -1,4 +1,4 @@
-/* GPU DIAGNOSE v1.2.7 — Static only, no telemetry or device access. */
+/* GPU DIAGNOSE v1.3.0 — Static only, no telemetry or device access. */
 (() => {
   "use strict";
   const key = "gpu-diagnose-session-v1";
@@ -53,6 +53,7 @@
   const OPENRGB11_FUSE_FREE = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\nAPP=\"\"\nfor f in \"$HOME\"/Downloads/OpenRGB_1.1*x86_64*.AppImage \"$HOME\"/Downloads/OpenRGB_1.1*.AppImage; do\n  if [ -f \"$f\" ]; then APP=\"$f\"; break; fi\ndone\nif [ -z \"$APP\" ]; then\n  echo 'OPENRGB11_STATUS: FILE_NOT_FOUND'\nelse\n  echo \"OPENRGB11_FILE: $(basename \"$APP\")\"\n  WORK=\"$(mktemp -d /tmp/gpu-openrgb11.XXXXXX)\"\n  if [ -z \"$WORK\" ] || [ ! -d \"$WORK\" ]; then\n    echo 'OPENRGB11_STATUS: TEMP_DIR_FAILED'\n  elif (cd \"$WORK\" && \"$APP\" --appimage-extract >/dev/null 2>&1 && test -x squashfs-root/AppRun); then\n    echo 'OPENRGB11_STATUS: EXTRACT_OK'\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$WORK/squashfs-root/AppRun\" --version 2>&1\n    echo '--- OPENRGB 1.1 DEVICES ---'\n    \"$WORK/squashfs-root/AppRun\" --list-devices 2>&1\n    echo \"OPENRGB11_LIST_EXIT: $?\"\n  else\n    echo 'OPENRGB11_STATUS: EXTRACT_FAILED'\n    echo 'AppImage konnte nicht extrahiert werden. FUSE-Kompatibilitaets-Paket als Alternative verwenden.'\n  fi\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
   const OPENRGB_FUSE_PACKAGE = "sudo apt update && sudo apt install libfuse2t64";
   const OPENRGB_FIX_OPENGL = "echo 'GPU-DIAG-OPENRGB11-BEGIN'\necho 'OPENRGB11_FIX: libOpenGL.so.0 via libopengl0'\nif sudo apt install libopengl0; then\n  echo 'OPENRGB11_PACKAGE: INSTALLED_OR_PRESENT'\n  RUN=\"\"\n  for f in /tmp/gpu-openrgb11.*/squashfs-root/AppRun; do\n    if [ -x \"$f\" ]; then RUN=\"$f\"; break; fi\n  done\n  if [ -z \"$RUN\" ]; then\n    echo 'OPENRGB11_STATUS: EXTRACTED_DIR_NOT_FOUND'\n    echo 'Zuerst AppImage FUSE-frei entpacken (vorherigen Befehl auf der Seite).'\n  else\n    echo \"OPENRGB11_FILE: $RUN\"\n    echo '--- OPENRGB 1.1 VERSION ---'\n    \"$RUN\" --version 2>&1\n    VR=$?\n    if [ \"$VR\" -ne 0 ]; then\n      echo 'OPENRGB11_STATUS: RUNTIME_ERROR'\n      echo \"OPENRGB11_VERSION_EXIT: $VR\"\n      echo '--- Fehlende Bibliotheken laut dynamischem Linker ---'\n      ldd \"$(dirname \"$RUN\")/usr/bin/OpenRGB\" 2>&1 | grep 'not found' || true\n    else\n      echo 'OPENRGB11_STATUS: DEPENDENCIES_OK'\n      echo '--- OPENRGB 1.1 DEVICES ---'\n      \"$RUN\" --list-devices 2>&1\n      echo \"OPENRGB11_LIST_EXIT: $?\"\n    fi\n  fi\nelse\n  echo 'OPENRGB11_STATUS: PACKAGE_INSTALL_FAILED'\nfi\necho 'GPU-DIAG-OPENRGB11-END'";
+  const OPENRGB_DETAILED = "RUN=\"\"\nfor f in /tmp/gpu-openrgb11.*/squashfs-root/AppRun; do\n  if [ -x \"$f\" ]; then RUN=\"$f\"; break; fi\ndone\n{\n  echo 'GPU-DIAG-OPENRGB-VERBOSE-BEGIN'\n  if [ -n \"$RUN\" ]; then\n    echo \"OPENRGB_VERBOSE_APP: $RUN\"\n    echo '--- OPENRGB 1.1 DEVICE DETECTION / VERBOSE ---'\n    \"$RUN\" --loglevel 6 --list-devices 2>&1\n    echo \"OPENRGB_VERBOSE_EXIT: $?\"\n  else\n    echo 'OPENRGB_VERBOSE_ERROR: APPIMAGE_NOT_FOUND_IN_TMP'\n    echo 'Use the already available AppImage extraction control if /tmp was cleared.'\n  fi\n  echo 'GPU-DIAG-OPENRGB-VERBOSE-END'\n} | tee \"$HOME/Downloads/gpu-openrgb-verbose.log\"\necho 'Log: ~/Downloads/gpu-openrgb-verbose.log'";
   const cmds = {
     windows: WINDOWS,
     linux: LINUX,
@@ -66,13 +67,14 @@
     openrgb11FuseFree: OPENRGB11_FUSE_FREE,
     openrgbFusePackage: OPENRGB_FUSE_PACKAGE,
     openrgbFixOpenGL: OPENRGB_FIX_OPENGL,
+    openrgbDetailed: OPENRGB_DETAILED,
     nitroPy: "py .\\tools\\nitroglow_probe.py read",
     nitroExe: ".\\NitroGlowFix.exe --read"
   };
   const $ = id => document.getElementById(id);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const tracked = ["cableInspection","cableCrossTest","openrgb11Output","linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
-  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null,lastLinuxOpenTest:null,lastOpenRgb11:null};
+  const tracked = ["coldBootLed","postColdTriXX","openrgbDetailedOutput","cableInspection","cableCrossTest","openrgb11Output","linuxOpenTestOutput","windowsOutput","nitroOutput","linuxOutput","openrgbOutput","linuxCable","linuxBootLed","linuxOpenRgb","linuxRgbControl","notes","osResult","externalResult","bootFlash","linuxStatus"];
+  const state = {tasks:{}, fields:{}, lastWindows:null, lastNitro:null, lastLinux:null, lastOpenRgb:null,lastLinuxAccess:null,lastLinuxOpenTest:null,lastOpenRgb11:null,lastOpenrgbDetailed:null,lastColdBoot:null};
   let timer;
   function toast(msg) {
     const el=$("toast");el.textContent=msg;el.classList.add("show");
@@ -99,7 +101,7 @@
       const saved=JSON.parse(localStorage.getItem(key)||"null");
       if(saved&&typeof saved==="object"){
         state.tasks=saved.tasks||{};state.fields=saved.fields||{};
-        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;state.lastLinuxAccess=saved.lastLinuxAccess||null;state.lastLinuxOpenTest=saved.lastLinuxOpenTest||null;state.lastOpenRgb11=saved.lastOpenRgb11||null;
+        state.lastWindows=saved.lastWindows||null;state.lastNitro=saved.lastNitro||null;state.lastLinux=saved.lastLinux||null;state.lastOpenRgb=saved.lastOpenRgb||null;state.lastLinuxAccess=saved.lastLinuxAccess||null;state.lastLinuxOpenTest=saved.lastLinuxOpenTest||null;state.lastOpenRgb11=saved.lastOpenRgb11||null;state.lastOpenrgbDetailed=saved.lastOpenrgbDetailed||null;state.lastColdBoot=saved.lastColdBoot||null;
       }
     }catch(e){}
     tracked.forEach(id=>{if(state.fields[id]!==undefined)$(id).value=state.fields[id];});
@@ -341,6 +343,59 @@
     outcome($("openrgbResult"),gpu.length?"good":"warn",msgs.join("\n"));
     persist();
   }
+  function parseOpenrgbDetailed(){
+    const raw=$("openrgbDetailedOutput").value.trim();
+    if(!raw){outcome($("openrgbDetailedResult"),"warn","Noch kein ausführliches Geräteprotokoll eingefügt.");return;}
+    const match=raw.match(/GPU-DIAG-OPENRGB-VERBOSE-BEGIN\s*([\s\S]*?)\s*GPU-DIAG-OPENRGB-VERBOSE-END/i);
+    if(!match){outcome($("openrgbDetailedResult"),"warn","Bitte das vollständige Log inklusive BEGIN- und END-Markierung einfügen.");return;}
+    const body=match[1];
+    const noApp=/OPENRGB_VERBOSE_ERROR:\s*APPIMAGE_NOT_FOUND_IN_TMP/i.test(body);
+    const gpuIdentity=/Device\s+1002:744C[\s\S]{0,200}?1DA2:E471|1002:744C/i.test(body);
+    const adapters=(body.match(/Registering I2C interface:[^\r\n]+/gi)||[]);
+    const matching=adapters.filter(x=>/1002:744C|1DA2:E471/i.test(x));
+    const numbered=body.split(/\r?\n/).map(x=>x.trim()).filter(x=>/^\d+\s*:\s*\S/.test(x));
+    const sapphire=numbered.filter(x=>/\bsapphire\b|\bnitro\s*glow\b/i.test(x));
+    const errors=(body.match(/\[i2c_smbus_linux\][^\r\n]+|Permission denied[^\r\n]*|Failed to (read|detect|open)[^\r\n]*/gi)||[]);
+    const exit=body.match(/OPENRGB_VERBOSE_EXIT:\s*(-?\d+)/i)?.[1]||"unbekannt";
+    const summary=[
+      "OpenRGB-Start: "+(noApp?"AppImage nicht gefunden":"Protokoll erhalten"),
+      "OpenRGB-Exitcode: "+exit,
+      "Sapphire-PCI-ID 1002:744C im Erkennungslog: "+(gpuIdentity?"JA":"nicht nachgewiesen"),
+      "I²C-Adapter-Registrierungen insgesamt: "+adapters.length,
+      "Davon mit Sapphire-PCI-ID: "+matching.length,
+      "Eigenständiges Nitro-Glow-Gerät aufgelistet: "+(sapphire.length?"JA":"NEIN"),
+      "Auffällige I²C-Meldungen: "+errors.length,
+      ""
+    ];
+    if(noApp)summary.push("Die vorher extrahierte AppImage-Datei fehlt; sie muss aus der bereits heruntergeladenen Datei neu extrahiert werden.");
+    else if(sapphire.length)summary.push("OpenRGB meldet jetzt ein eigenes Sapphire/Nitro-Glow-Gerät. Ein tatsächlicher Farbwechsel wurde noch nicht geprüft.");
+    else if(gpuIdentity)summary.push("WICHTIG: OpenRGB erkennt den PCI-/I²C-Adapter der Sapphire, führt aber kein eigenständiges Nitro-Glow-RGB-Gerät in der Liste. PCI-Erkennung allein bedeutet NICHT, dass der RGB-Controller antwortet.");
+    else summary.push("Keine eindeutige Zuordnung der Sapphire-I²C-Adapter im OpenRGB-Log. Das kann ein Software-/Erkennungsproblem sein und ist noch kein Hardwaredefekt-Beweis.");
+    if(errors.length)summary.push("Erste Warnung: "+errors[0]);
+    summary.push("Kein automatischer Controller-Reset; wir vermeiden direkte I²C-Registerschreibversuche.");
+    state.lastOpenrgbDetailed={at:new Date().toISOString(),adapterDetected:gpuIdentity,adapterCount:matching.length,nitroDevice:!!sapphire.length,errors:errors.length,exit};
+    outcome($("openrgbDetailedResult"),sapphire.length?"good":"warn",summary.join("\n"));
+    persist();
+  }
+  function assessColdBoot(){
+    const boot=$("coldBootLed").value, trixx=$("postColdTriXX").value;
+    const msgs=[];
+    let type="warn";
+    if(boot==="on"||trixx==="works"){
+      type="good";
+      msgs.push("Nach dem längeren stromlosen Zustand ist die interne Sapphire-Beleuchtung wieder funktionsfähig. Das spricht gegen einen dauerhaft ausgefallenen LED-Stromkreis.");
+    }else if(boot==="off"&&trixx==="noeffect"){
+      msgs.push("Auch ohne externes ARGB-Kabel, nach längerem stromlosen Zustand und mit TriXX interner Steuerung bleiben die LEDs dunkel. Eine GPU-seitige RGB-Störung oder persistent falsche Controller-Einstellung ist wahrscheinlicher. Kein Beweis, welcher Bauteil defekt ist.");
+    }else if(boot==="flash"){
+      msgs.push("Ein kurzer Blitz zeigt einen zeitweiligen LED-Stromzustand, beweist aber keine funktionierende Farbsteuerung oder MCU-Kommunikation.");
+    }else{
+      msgs.push("Der Kaltstart ist noch nicht vollständig dokumentiert. Die interne TriXX-Prüfung bleibt getrennt vom externen MSI-ARGB-Modus.");
+    }
+    msgs.push("Ein Mainboard-CMOS-/BIOS-Reset ist keine bestätigte Methode, den separaten Sapphire-LED-Controller zurückzusetzen. Keine GPU-BIOS- oder EEPROM-Änderung auf Verdacht.");
+    state.lastColdBoot={at:new Date().toISOString(),boot,trixx,assessment:msgs.join(" ")};
+    outcome($("coldBootResult"),type,msgs.join("\n\n"));
+    persist();
+  }
   function assessCable(){
     const c=$("cableInspection").value, t=$("cableCrossTest").value;
     let status="warn",msgs=[];
@@ -416,6 +471,9 @@
       "Linux tatsächliche Steuerung: "+v("linuxRgbControl"),
       "Sapphire-Kabel-Sichtprüfung: "+v("cableInspection"),
       "Sapphire-Kabel-Gegencheck: "+v("cableCrossTest"),
+      "Sapphire-Kaltstart ohne externes ARGB: "+v("coldBootLed"),
+      "TriXX nach Kaltstart: "+v("postColdTriXX"),
+      "OpenRGB ausführliche GPU-PCI-Erkennung: "+(state.lastOpenrgbDetailed?(state.lastOpenrgbDetailed.adapterDetected?"JA":"nicht nachgewiesen"):"nicht geprüft"),
       "OpenRGB eigenständige Sapphire-Erkennung: "+(state.lastOpenRgb?(state.lastOpenRgb.gpu?"JA":"NEIN"):"nicht geprüft"),
       "OpenRGB 1.1 Vergleich: "+(state.lastOpenRgb11?(state.lastOpenRgb11.sapphire?"Sapphire erkannt":"Sapphire nicht erkannt / Startproblem"):"nicht durchgeführt"),
       "Linux GPU-OEM-Bus i2c-9 lesbar: "+(state.lastLinuxAccess?.i2c9AccessKnown?(state.lastLinuxAccess.i2c9Readable?"JA":"NEIN"):"nicht geprüft"),
@@ -468,6 +526,12 @@
   $$("[data-goto]").forEach(b=>b.addEventListener("click",()=>page(b.dataset.goto)));
   $$("[data-task]").forEach(b=>b.addEventListener("change",e=>{state.tasks[e.target.dataset.task]=e.target.checked;persist();progress();}));
   tracked.forEach(id=>$(id).addEventListener("input",storeField));
+  $("parseOpenrgbDetailed").addEventListener("click",parseOpenrgbDetailed);
+  $("clearOpenrgbDetailed").addEventListener("click",()=>{
+    $("openrgbDetailedOutput").value="";state.fields.openrgbDetailedOutput="";state.lastOpenrgbDetailed=null;
+    persist();outcome($("openrgbDetailedResult"),"","Ausgabe gelöscht.");
+  });
+  $("assessColdBoot").addEventListener("click",assessColdBoot);
   $("assessCable").addEventListener("click",assessCable);
   $("parseWindows").addEventListener("click",parseWindows);
   $("parseNitro").addEventListener("click",parseNitro);
