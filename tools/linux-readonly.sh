@@ -1,27 +1,39 @@
 #!/usr/bin/env bash
-# GPU DIAGNOSE - Linux live session read-only baseline
-# No sudo, no writes to device registers, no installation and no network.
+# GPU DIAGNOSE v1.1: Linux Live USB baseline. READ ONLY.
+# No sudo, package install, register access, bus scan, files created or network requests.
 set +e
 echo 'GPU-DIAG-LINUX-BEGIN'
-printf 'Timestamp: '; date -Is
-printf 'Kernel: '; uname -r
-printf 'Distribution: '; if [ -f /etc/os-release ]; then . /etc/os-release; echo "$PRETTY_NAME"; else echo unknown; fi
-echo '--- Display PCI devices ---'
+printf 'KERNEL: '; uname -r
+printf 'OS: '; if [ -r /etc/os-release ]; then sed -n 's/^PRETTY_NAME=//p' /etc/os-release | head -n 1; else echo 'unknown'; fi
+printf 'ARCH: '; uname -m
+echo '--- GPU PCI ---'
 if command -v lspci >/dev/null 2>&1; then
-  lspci -nnk | grep -E -i -A 4 'VGA compatible controller|3D controller|Display controller'
+    lspci -Dnnk | grep -E -i -A 4 'VGA compatible controller|3D controller|Display controller'
 else
-  echo 'lspci not installed'
+    echo 'lspci: not installed'
 fi
-echo '--- Kernel DRM devices ---'
-for dev in /sys/class/drm/card[0-9]*/device; do
-  if [ -d "$dev" ]; then
-    printf '%s ' "$dev"
-    for key in vendor device subsystem_vendor subsystem_device; do
-      if [ -r "$dev/$key" ]; then printf '%s=%s ' "$key" "$(cat "$dev/$key")"; fi
+echo '--- DRM PCI IDs ---'
+for d in /sys/class/drm/card[0-9]*/device; do
+    [ -d "$d" ] || continue
+    printf 'DRM_DEVICE: %s ' "$d"
+    for field in vendor device subsystem_vendor subsystem_device; do
+        if [ -r "$d/$field" ]; then printf '%s=%s ' "$field" "$(cat "$d/$field")"; fi
     done
+    if [ -L "$d/driver" ]; then printf 'driver=%s ' "$(basename "$(readlink -f "$d/driver")")"; fi
     echo
-  fi
 done
-echo '--- I2C device nodes (existence only; no bus probing) ---'
-ls /dev/i2c-* 2>/dev/null || echo 'No accessible /dev/i2c device nodes'
+echo '--- KERNEL MODULES ---'
+if command -v lsmod >/dev/null 2>&1; then
+    lsmod | grep -E '^(amdgpu|i2c_dev|i2c_algo_bit|drm_)' || echo 'No matching loaded modules'
+else
+    echo 'lsmod not available'
+fi
+echo '--- I2C DEVICE NODES (existence only) ---'
+found=0
+for d in /dev/i2c-*; do
+    [ -e "$d" ] || continue
+    found=1
+    ls -l "$d"
+done
+[ "$found" -eq 1 ] || echo 'No accessible /dev/i2c device nodes'
 echo 'GPU-DIAG-LINUX-END'
